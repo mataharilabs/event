@@ -1,19 +1,48 @@
-import { cookies } from "next/headers";
+import { auth } from "@/lib/auth";
+import { db } from "@/db";
+import { adminUsers } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import type { AdminUser } from "@/db/schema";
-
-const ADMIN_SESSION_COOKIE = "admin_session";
 
 export async function getAdminSession(): Promise<AdminUser | null> {
   try {
-    const cookieStore = await cookies();
-    const sessionToken = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+    const session = await auth();
+    if (!session?.user?.email) return null;
 
-    if (!sessionToken) {
-      return null;
+    // Check for EVENT app role in SSO claims
+    const eventRole = session.user.apps?.["EVENT"];
+    if (!eventRole) return null;
+
+    // Get or create local admin record (needed for FK references in audit logs, payments, etc.)
+    const existing = await db.query.adminUsers.findFirst({
+      where: eq(adminUsers.email, session.user.email),
+    });
+
+    if (existing) {
+      // Sync role if it changed in SSO
+      if (existing.role !== eventRole) {
+        const [updated] = await db
+          .update(adminUsers)
+          .set({ role: eventRole as AdminUser["role"], updatedAt: new Date() })
+          .where(eq(adminUsers.id, existing.id))
+          .returning();
+        return updated ?? existing;
+      }
+      return existing;
     }
 
-    const { verifyAdminToken } = await import("./sso");
-    return verifyAdminToken(sessionToken);
+    // First login — create local record
+    const [newAdmin] = await db
+      .insert(adminUsers)
+      .values({
+        email: session.user.email,
+        name: session.user.name ?? session.user.email,
+        ssoSubject: session.user.id ?? null,
+        role: eventRole as AdminUser["role"],
+      })
+      .returning();
+
+    return newAdmin ?? null;
   } catch {
     return null;
   }
@@ -21,20 +50,12 @@ export async function getAdminSession(): Promise<AdminUser | null> {
 
 export async function requireAdmin(): Promise<AdminUser> {
   const admin = await getAdminSession();
-
-  if (!admin) {
-    throw new Error("Unauthorized: Admin session required");
-  }
-
+  if (!admin) throw new Error("Unauthorized: Admin session required");
   return admin;
 }
 
 export async function requireSuperAdmin(): Promise<AdminUser> {
   const admin = await requireAdmin();
-
-  if (admin.role !== "SUPER_ADMIN") {
-    throw new Error("Forbidden: Super admin access required");
-  }
-
+  if (admin.role !== "SUPER_ADMIN") throw new Error("Forbidden: Super admin access required");
   return admin;
 }

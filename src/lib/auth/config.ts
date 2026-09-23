@@ -60,11 +60,19 @@ export const authConfig: NextAuthConfig = {
       if (token.sub && session.user) {
         session.user.id = token.sub;
       }
+      // Pass through SSO claims (apps map + isSuperAdmin) from JWT to session
+      const ssoToken = token as { apps?: Record<string, string>; isSuperAdmin?: boolean };
+      if (ssoToken.apps) session.user.apps = ssoToken.apps;
+      if (ssoToken.isSuperAdmin !== undefined) session.user.isSuperAdmin = ssoToken.isSuperAdmin;
       return session;
     },
     jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
+        // Preserve SSO-specific claims if present on the user object
+        const u = user as Record<string, unknown>;
+        if (u.apps) token.apps = u.apps as Record<string, string>;
+        if (u.isSuperAdmin !== undefined) token.isSuperAdmin = u.isSuperAdmin as boolean;
       }
       return token;
     },
@@ -72,6 +80,25 @@ export const authConfig: NextAuthConfig = {
   session: {
     strategy: "jwt",
   },
+  // Share cookie domain with SSO so the SSO session cookie is readable here
+  ...(process.env.COOKIE_DOMAIN
+    ? {
+        cookies: {
+          sessionToken: {
+            name: process.env.NODE_ENV === "production"
+              ? "__Secure-authjs.session-token"
+              : "authjs.session-token",
+            options: {
+              httpOnly: true,
+              sameSite: "lax" as const,
+              path: "/",
+              secure: process.env.NODE_ENV === "production",
+              domain: process.env.COOKIE_DOMAIN,
+            },
+          },
+        },
+      }
+    : {}),
 };
 
 async function handleGoogleSignIn(

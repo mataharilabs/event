@@ -67,18 +67,30 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Protect admin routes (except login/auth callback)
+  // Protect admin routes — redirect to SSO login if no session cookie present
   if (pathname.startsWith("/admin")) {
-    const adminSession = request.cookies.get("admin_session");
+    const isPublicAdminPath =
+      pathname.startsWith("/admin/login") ||
+      pathname.startsWith("/admin/auth");
 
-    if (
-      !adminSession &&
-      !pathname.startsWith("/admin/login") &&
-      !pathname.startsWith("/admin/auth")
-    ) {
-      const loginUrl = new URL("/admin/login", request.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
+    if (!isPublicAdminPath) {
+      const sessionCookie =
+        request.cookies.get("__Secure-authjs.session-token") ??
+        request.cookies.get("authjs.session-token");
+
+      if (!sessionCookie) {
+        const ssoUrl = process.env.SSO_URL;
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        if (ssoUrl && appUrl) {
+          const callbackUrl = `${appUrl}${pathname}`;
+          return NextResponse.redirect(
+            `${ssoUrl}/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+          );
+        }
+        const loginUrl = new URL("/admin/login", request.url);
+        loginUrl.searchParams.set("callbackUrl", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 

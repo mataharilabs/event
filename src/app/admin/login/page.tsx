@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { getSSOLoginUrl } from "@/lib/auth/sso";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -5,21 +7,21 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminLoginPage({
+export default async function AdminLoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
-  void searchParams;
+  const { callbackUrl } = await searchParams;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const target = callbackUrl ?? `${appUrl}/admin`;
 
-  const ssoUrl = process.env.SSO_ISSUER_URL;
-  const clientId = process.env.SSO_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  // If SSO_URL is configured, redirect immediately — no click needed
+  if (process.env.SSO_URL) {
+    redirect(getSSOLoginUrl(target));
+  }
 
-  const authUrl = ssoUrl && clientId && appUrl
-    ? `${ssoUrl}/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(`${appUrl}/admin/auth/callback`)}&response_type=code&scope=openid+email+profile`
-    : null;
-
+  // Fallback: SSO not configured yet
   return (
     <main className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
       <div className="w-full max-w-sm bg-white rounded-lg shadow p-8">
@@ -27,18 +29,10 @@ export default function AdminLoginPage({
         <p className="text-center text-muted-foreground mb-8">
           AsiaCommerce Event Platform
         </p>
-        {authUrl ? (
-          <a
-            href={authUrl}
-            className="flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Login dengan AsiaCommerce SSO
-          </a>
-        ) : (
-          <p className="text-center text-sm text-red-500">
-            Konfigurasi SSO belum lengkap.
-          </p>
-        )}
+        <p className="text-center text-sm text-red-500">
+          Konfigurasi SSO belum lengkap. Set environment variable{" "}
+          <code className="bg-gray-100 px-1 rounded">SSO_URL</code>.
+        </p>
       </div>
     </main>
   );

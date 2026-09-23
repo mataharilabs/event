@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/admin";
+import { getSSOLoginUrl } from "@/lib/auth/sso";
 import { AdminSidebar } from "@/components/admin/sidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await getAdminSession();
 
   if (!admin) {
-    redirect("/admin/login");
+    redirect(getSSOLoginUrl());
   }
 
   return (

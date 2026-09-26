@@ -40,10 +40,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!admin) {
     // Log ke server untuk diagnosa
-    console.log("[AdminLayout] access denied", {
+    console.log("[AdminLayout] getAdminSession returned null", {
       email: session.user.email,
       apps: session.user.apps,
-      isSuperAdmin: session.user.isSuperAdmin,
+      eventRole: session.user.apps?.["EVENT"],
     });
 
     // Authenticated via SSO tapi tidak punya role di app EVENT

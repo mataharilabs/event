@@ -43,7 +43,8 @@ export async function getAdminSession(): Promise<AdminUser | null> {
       .returning();
 
     return newAdmin ?? null;
-  } catch {
+  } catch (err) {
+    console.error("[getAdminSession] error:", err);
     return null;
   }
 }

@@ -39,26 +39,37 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const admin = await getAdminSession();
 
   if (!admin) {
+    // Log ke server untuk diagnosa
+    console.log("[AdminLayout] access denied", {
+      email: session.user.email,
+      apps: session.user.apps,
+      isSuperAdmin: session.user.isSuperAdmin,
+    });
+
     // Authenticated via SSO tapi tidak punya role di app EVENT
     // Tampilkan error — JANGAN redirect ke SSO (akan menyebabkan loop)
     return (
       <main className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-        <div className="w-full max-w-sm bg-white rounded-lg shadow p-8 text-center space-y-3">
+        <div className="w-full max-w-sm bg-white rounded-lg shadow p-8 text-center space-y-4">
           <h1 className="text-xl font-bold">Akses Ditolak</h1>
           <p className="text-sm text-muted-foreground">
-            Akun <strong>{session.user.email}</strong> tidak memiliki akses ke
-            Event Admin Panel.
+            Akun <strong>{session.user.email}</strong> tidak memiliki role{" "}
+            <code className="bg-gray-100 px-1 rounded">EVENT</code> di SSO.
           </p>
+          {/* Debug: tampilkan apps dari JWT untuk diagnosa */}
+          <div className="bg-gray-50 rounded p-3 text-left text-xs font-mono break-all">
+            <p className="text-gray-500 mb-1">session.user.apps:</p>
+            <p>{JSON.stringify(session.user.apps ?? null)}</p>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Minta administrator SSO untuk menambahkan role{" "}
-            <code className="bg-gray-100 px-1 rounded">EVENT</code> ke akun
-            Anda.
+            Assign role EVENT di SSO lalu <strong>logout → login ulang</strong>{" "}
+            agar JWT di-refresh.
           </p>
           <a
             href={`${process.env.SSO_URL ?? "https://sso.asiacommerce.net"}/logout`}
             className="inline-block mt-2 text-sm text-primary underline"
           >
-            Logout
+            Logout dari SSO
           </a>
         </div>
       </main>

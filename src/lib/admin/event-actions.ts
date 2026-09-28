@@ -24,7 +24,9 @@ async function logAudit(adminId: string, action: AuditAction, entity: string, en
   });
 }
 
-export async function createEvent(input: CreateEventInput) {
+export async function createEvent(input: CreateEventInput): Promise<
+  { success: false; error: string } | { success: true; eventId: string; slug: string }
+> {
   const admin = await requireAdmin();
   const parsed = createEventSchema.safeParse(input);
   if (!parsed.success) return { success: false, error: "Input tidak valid." };

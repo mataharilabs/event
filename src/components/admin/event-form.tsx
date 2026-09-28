@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createEvent, updateEvent } from "@/lib/admin/event-actions";
+import { createEvent, updateEvent, createTicket } from "@/lib/admin/event-actions";
 import type { Event } from "@/db/schema";
 
 const formSchema = z.object({
@@ -34,6 +34,13 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface TicketDraft {
+  name: string;
+  price: number;
+  quota: number | null;
+  description: string;
+}
+
 function toLocalDatetimeString(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -42,6 +49,8 @@ function toLocalDatetimeString(date: Date): string {
 interface EventFormProps {
   event?: Event;
 }
+
+const emptyTicket = (): TicketDraft => ({ name: "", price: 0, quota: null, description: "" });
 
 export function EventForm({ event }: EventFormProps) {
   const router = useRouter();
@@ -80,6 +89,27 @@ export function EventForm({ event }: EventFormProps) {
   const attendanceMode = watch("attendanceMode");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Ticket state (only shown on create)
+  const [tickets, setTickets] = useState<TicketDraft[]>([]);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [newTicket, setNewTicket] = useState<TicketDraft>(emptyTicket());
+  const [ticketError, setTicketError] = useState<string | null>(null);
+
+  function addTicket() {
+    if (!newTicket.name.trim()) {
+      setTicketError("Nama tiket wajib diisi.");
+      return;
+    }
+    setTickets((prev) => [...prev, { ...newTicket }]);
+    setNewTicket(emptyTicket());
+    setShowTicketForm(false);
+    setTicketError(null);
+  }
+
+  function removeTicket(index: number) {
+    setTickets((prev) => prev.filter((_, i) => i !== index));
+  }
+
   const onSubmit = (data: FormValues) => {
     setSubmitError(null);
     startTransition(async () => {
@@ -94,20 +124,28 @@ export function EventForm({ event }: EventFormProps) {
         seoDescription: data.seoDescription || undefined,
       };
 
-      const result = event
-        ? await updateEvent(event.id, input)
-        : await createEvent(input);
-
-      if (!result.success) {
-        setSubmitError(result.error ?? "Terjadi kesalahan.");
+      if (event) {
+        const result = await updateEvent(event.id, input);
+        if (!result.success) { setSubmitError(result.error ?? "Terjadi kesalahan."); return; }
+        router.refresh();
         return;
       }
 
-      if (!event && "eventId" in result) {
-        router.push(`/admin/events/${result.eventId}`);
-      } else {
-        router.refresh();
+      const result = await createEvent(input);
+      if (!result.success) { setSubmitError(result.error ?? "Terjadi kesalahan."); return; }
+
+      for (const t of tickets) {
+        await createTicket({
+          eventId: result.eventId,
+          name: t.name,
+          price: t.price,
+          quota: t.quota ?? undefined,
+          description: t.description || undefined,
+          currency: "IDR",
+          isActive: true,
+        });
       }
+      router.push(`/admin/events/${result.eventId}`);
     });
   };
 
@@ -217,6 +255,116 @@ export function EventForm({ event }: EventFormProps) {
         )}
       </section>
 
+      {/* Tickets — only on create form */}
+      {!event && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h2 className="font-semibold text-base">Tiket</h2>
+            {!showTicketForm && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => { setShowTicketForm(true); setTicketError(null); }}
+              >
+                + Tambah Tiket
+              </Button>
+            )}
+          </div>
+
+          {/* Existing tickets list */}
+          {tickets.length > 0 && (
+            <div className="space-y-2">
+              {tickets.map((t, i) => (
+                <div key={i} className="flex items-center justify-between rounded-md border px-4 py-3 bg-muted/40">
+                  <div>
+                    <p className="text-sm font-medium">{t.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.price === 0 ? "Gratis" : `Rp ${t.price.toLocaleString("id-ID")}`}
+                      {t.quota !== null ? ` · Kuota: ${t.quota}` : " · Kuota: Tidak terbatas"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => removeTicket(i)}
+                  >
+                    Hapus
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* New ticket mini-form */}
+          {showTicketForm && (
+            <div className="rounded-md border p-4 space-y-3 bg-muted/20">
+              <div className="space-y-1.5">
+                <Label>Nama Tiket <span className="text-destructive">*</span></Label>
+                <Input
+                  value={newTicket.name}
+                  onChange={(e) => setNewTicket((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="Contoh: Early Bird, VIP, Regular..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Harga (Rp) <span className="text-xs text-muted-foreground">— 0 = Gratis</span></Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={newTicket.price}
+                    onChange={(e) => setNewTicket((p) => ({ ...p, price: parseInt(e.target.value) || 0 }))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kuota <span className="text-xs text-muted-foreground">— kosong = tidak terbatas</span></Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={newTicket.quota ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setNewTicket((p) => ({ ...p, quota: v ? parseInt(v) : null }));
+                    }}
+                    placeholder="Tidak terbatas"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Deskripsi Tiket <span className="text-xs text-muted-foreground">(opsional)</span></Label>
+                <Input
+                  value={newTicket.description}
+                  onChange={(e) => setNewTicket((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Keterangan tiket..."
+                />
+              </div>
+              {ticketError && <p className="text-sm text-destructive">{ticketError}</p>}
+              <div className="flex gap-2">
+                <Button type="button" size="sm" onClick={addTicket}>Simpan Tiket</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setShowTicketForm(false); setNewTicket(emptyTicket()); setTicketError(null); }}
+                >
+                  Batal
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {tickets.length === 0 && !showTicketForm && (
+            <p className="text-sm text-muted-foreground">
+              Belum ada tiket. Klik <strong>+ Tambah Tiket</strong> untuk menambah tiket gratis atau berbayar.
+            </p>
+          )}
+        </section>
+      )}
+
       {/* SEO */}
       <section className="space-y-4">
         <h2 className="font-semibold text-base border-b pb-2">SEO (Opsional)</h2>
@@ -249,4 +397,3 @@ export function EventForm({ event }: EventFormProps) {
     </form>
   );
 }
-

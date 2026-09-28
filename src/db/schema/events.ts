@@ -8,7 +8,7 @@ import {
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { createId } from "@/lib/id";
-import { users } from "./users";
+import { adminUsers } from "./admin-users";
 
 export const lifecycleStatusEnum = pgEnum("lifecycle_status", [
   "draft",
@@ -70,7 +70,7 @@ export const events = pgTable(
 
     createdBy: text("created_by")
       .notNull()
-      .references(() => users.id),
+      .references(() => adminUsers.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     publishedAt: timestamp("published_at", { withTimezone: true }),

@@ -6,6 +6,7 @@ import { getEventDisplayStatus } from "@/lib/events/display-status";
 import { EventForm } from "@/components/admin/event-form";
 import { TicketBuilder } from "@/components/admin/ticket-builder";
 import { EventActionButtons } from "@/components/admin/event-actions";
+import { ImageManager } from "@/components/admin/image-manager";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime } from "@/lib/format";
 import type { Metadata } from "next";
@@ -87,6 +88,16 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
       <div className="bg-white rounded-xl border p-4">
         <p className="text-sm font-medium mb-3">Aksi Event</p>
         <EventActionButtons eventId={event.id} lifecycleStatus={event.lifecycleStatus} />
+      </div>
+
+      {/* Image manager */}
+      <div className="bg-white rounded-xl border p-6">
+        <h2 className="font-semibold mb-4">Gambar Event</h2>
+        <ImageManager
+          eventId={event.id}
+          primaryImageUrl={event.primaryImageUrl}
+          images={event.eventImages}
+        />
       </div>
 
       {/* Ticket builder */}

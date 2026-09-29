@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { events, eventTickets, auditLogs } from "@/db/schema";
+import { events, eventTickets, eventImages, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createId, createShortCode } from "@/lib/id";
 import { generateSlug, generateUniqueSlug } from "@/lib/events/slug";
@@ -216,5 +216,22 @@ export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
   await logAudit(admin.id, "UPDATE_TICKET", "event_tickets", ticketId);
   revalidatePath(`/admin/events/${existing.eventId}`);
 
+  return { success: true };
+}
+
+// Image actions
+export async function setPrimaryImage(eventId: string, imageUrl: string) {
+  await requireAdmin();
+  await db.update(events).set({ primaryImageUrl: imageUrl, updatedAt: new Date() }).where(eq(events.id, eventId));
+  revalidatePath(`/admin/events/${eventId}`);
+  return { success: true };
+}
+
+export async function removeEventImage(imageId: string) {
+  await requireAdmin();
+  const img = await db.query.eventImages.findFirst({ where: eq(eventImages.id, imageId) });
+  if (!img) return { success: false, error: "Gambar tidak ditemukan." };
+  await db.delete(eventImages).where(eq(eventImages.id, imageId));
+  revalidatePath(`/admin/events/${img.eventId}`);
   return { success: true };
 }

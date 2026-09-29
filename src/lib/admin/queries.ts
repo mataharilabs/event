@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { events, eventTickets, registrations, payments } from "@/db/schema";
+import { events, eventTickets, eventImages, registrations, payments } from "@/db/schema";
 import { eq, sql, and, count, ilike, or } from "drizzle-orm";
 import type { EventLifecycleStatus, RegistrationStatus } from "@/types";
 import { getEventDisplayStatus } from "@/lib/events/display-status";
@@ -93,6 +93,7 @@ export async function getAdminEventDetail(eventId: string) {
     where: eq(events.id, eventId),
     with: {
       eventTickets: { orderBy: (t, ops) => [ops.asc(t.createdAt)] },
+      eventImages: { orderBy: (img, ops) => [ops.asc(img.sortOrder)] },
     },
   });
   return event ?? null;

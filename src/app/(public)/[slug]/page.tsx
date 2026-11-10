@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, MapPin, ExternalLink } from "lucide-react";
@@ -6,12 +6,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/events/countdown";
 import { ShareButtons } from "@/components/events/share-buttons";
-import { getEventBySlug } from "@/lib/events/queries";
+import { getEventBySlug, getSlugByShortCode } from "@/lib/events/queries";
 import { getEventDisplayStatus } from "@/lib/events/display-status";
 import { buildEventMetadata, buildEventStructuredData } from "@/lib/seo/metadata";
 import { formatDate, formatTime, formatCurrency } from "@/lib/format";
-import { APP_URL } from "@/config";
+import { APP_URL, SHORT_CODE_LENGTH } from "@/config";
 import type { Metadata } from "next";
+
+const SHORT_CODE_REGEX = /^[a-z0-9]{8}$/;
+
+/**
+ * A short code looks like a slug at the URL level (both live at `/[param]`),
+ * so resolve it here: if no published event owns this slug but the param
+ * matches the short-code pattern, try the short-links table.
+ */
+async function resolveShortCodeSlug(param: string): Promise<string | null> {
+  if (param.length !== SHORT_CODE_LENGTH || !SHORT_CODE_REGEX.test(param)) return null;
+  return getSlugByShortCode(param).catch(() => null);
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -19,7 +31,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const event = await getEventBySlug(slug);
+  const event = await getEventBySlug(slug).catch(() => null);
   if (!event) return { title: "Event Tidak Ditemukan" };
   return buildEventMetadata(event);
 }
@@ -35,7 +47,12 @@ export default async function EventDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const event = await getEventBySlug(slug).catch(() => null);
 
-  if (!event) notFound();
+  if (!event) {
+    // The param might be a short code pointing to a canonical event URL.
+    const canonicalSlug = await resolveShortCodeSlug(slug);
+    if (canonicalSlug) permanentRedirect(`/${canonicalSlug}`);
+    notFound();
+  }
 
   const now = new Date();
   const displayStatus = getEventDisplayStatus(

@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { events, eventTickets, registrations } from "@/db/schema";
+import { events, eventTickets, registrations, shortLinks } from "@/db/schema";
 import { eq, and, sql, count, min, max, sum } from "drizzle-orm";
 import { getEventDisplayStatus } from "./display-status";
 import type { EventCardProps } from "@/components/events/types";
@@ -66,6 +66,21 @@ export async function getEventBySlug(slug: string) {
       eventTickets: { where: (t, ops) => ops.eq(t.isActive, true) },
     },
   });
+}
+
+/**
+ * Resolve a short code to its canonical event slug.
+ * Returns the slug of the published event the short code points to, or null.
+ */
+export async function getSlugByShortCode(shortCode: string): Promise<string | null> {
+  const result = await db
+    .select({ slug: events.slug })
+    .from(shortLinks)
+    .innerJoin(events, eq(shortLinks.eventId, events.id))
+    .where(and(eq(shortLinks.shortCode, shortCode), eq(events.lifecycleStatus, "published")))
+    .limit(1);
+
+  return result[0]?.slug ?? null;
 }
 
 export interface EventsFilter {

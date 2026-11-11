@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ImagePlus } from "lucide-react";
 import { EventForm } from "@/components/admin/event-form";
 import type { Metadata } from "next";
 
@@ -24,6 +24,11 @@ export default function CreateEventPage() {
 
       <div className="bg-white rounded-xl border p-6">
         <EventForm />
+      </div>
+
+      <div className="flex items-start gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+        <ImagePlus className="h-4 w-4 mt-0.5 shrink-0" />
+        <p>Gambar event, tiket, dan short link bisa ditambahkan setelah event dibuat — Anda akan diarahkan ke halaman kelola event.</p>
       </div>
     </div>
   );

@@ -51,23 +51,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Event tidak ditemukan." }, { status: 404 });
   }
 
+  // Vercel Blob reads this token automatically; surface a clear error if it's absent.
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    console.error("[event-images] BLOB_READ_WRITE_TOKEN is not set");
+    return NextResponse.json(
+      { error: "Storage belum dikonfigurasi (BLOB_READ_WRITE_TOKEN belum di-set di Vercel)." },
+      { status: 500 }
+    );
+  }
+
   const ext = file.type.split("/")[1] ?? "jpg";
   const filename = `events/${eventId}/${createId()}.${ext}`;
 
-  const blob = await put(filename, file, { access: "public" });
+  try {
+    const blob = await put(filename, file, { access: "public" });
 
-  // Save to DB
-  const [img] = await db
-    .insert(eventImages)
-    .values({
-      id: createId(),
-      eventId,
-      imageUrl: blob.url,
-      sortOrder: 0,
-    })
-    .returning();
+    // Save to DB
+    const [img] = await db
+      .insert(eventImages)
+      .values({
+        id: createId(),
+        eventId,
+        imageUrl: blob.url,
+        sortOrder: 0,
+      })
+      .returning();
 
-  return NextResponse.json({ id: img?.id, url: blob.url });
+    return NextResponse.json({ id: img?.id, url: blob.url });
+  } catch (err) {
+    console.error("[event-images] upload failed:", err);
+    return NextResponse.json(
+      { error: "Gagal menyimpan gambar ke storage. Periksa konfigurasi Vercel Blob." },
+      { status: 500 }
+    );
+  }
 }
 
 // DELETE /api/admin/event-images?imageId=xxx — delete an image

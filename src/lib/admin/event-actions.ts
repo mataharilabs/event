@@ -13,6 +13,18 @@ import type { CreateEventInput, UpdateEventInput } from "@/validations/event";
 import type { CreateTicketInput, UpdateTicketInput } from "@/validations/ticket";
 import type { AuditAction } from "@/types";
 
+/**
+ * Revalidate the public-facing pages that list or display an event.
+ * The home page is ISR-cached (revalidate=300), so mutations that change
+ * what appears on cards (primary image, title, status) must invalidate it
+ * explicitly, otherwise changes lag by up to 5 minutes.
+ */
+function revalidatePublicEventPaths(slug?: string | null) {
+  revalidatePath("/");
+  revalidatePath("/events");
+  if (slug) revalidatePath(`/${slug}`);
+}
+
 async function logAudit(adminId: string, action: AuditAction, entity: string, entityId: string, before?: unknown, after?: unknown) {
   await db.insert(auditLogs).values({
     adminId,
@@ -73,7 +85,7 @@ export async function updateEvent(eventId: string, input: UpdateEventInput) {
   await logAudit(admin.id, "UPDATE_EVENT", "events", eventId, existing, updated);
   revalidatePath("/admin/events");
   revalidatePath(`/admin/events/${eventId}`);
-  revalidatePath(`/${existing.slug}`);
+  revalidatePublicEventPaths(existing.slug);
 
   return { success: true };
 }
@@ -90,7 +102,7 @@ export async function publishEvent(eventId: string) {
 
   await logAudit(admin.id, "PUBLISH_EVENT", "events", eventId);
   revalidatePath("/admin/events");
-  revalidatePath(`/${event.slug}`);
+  revalidatePublicEventPaths(event.slug);
 
   return { success: true };
 }
@@ -106,18 +118,21 @@ export async function cancelEvent(eventId: string) {
 
   await logAudit(admin.id, "CANCEL_EVENT", "events", eventId);
   revalidatePath("/admin/events");
+  revalidatePublicEventPaths(event.slug);
 
   return { success: true };
 }
 
 export async function archiveEvent(eventId: string) {
   const admin = await requireAdmin();
-  await db.update(events)
+  const [updated] = await db.update(events)
     .set({ lifecycleStatus: "archived", updatedAt: new Date() })
-    .where(eq(events.id, eventId));
+    .where(eq(events.id, eventId))
+    .returning({ slug: events.slug });
 
   await logAudit(admin.id, "ARCHIVE_EVENT", "events", eventId);
   revalidatePath("/admin/events");
+  revalidatePublicEventPaths(updated?.slug);
 
   return { success: true };
 }
@@ -222,8 +237,13 @@ export async function updateTicket(ticketId: string, input: UpdateTicketInput) {
 // Image actions
 export async function setPrimaryImage(eventId: string, imageUrl: string) {
   await requireAdmin();
-  await db.update(events).set({ primaryImageUrl: imageUrl, updatedAt: new Date() }).where(eq(events.id, eventId));
+  const [updated] = await db
+    .update(events)
+    .set({ primaryImageUrl: imageUrl, updatedAt: new Date() })
+    .where(eq(events.id, eventId))
+    .returning({ slug: events.slug });
   revalidatePath(`/admin/events/${eventId}`);
+  revalidatePublicEventPaths(updated?.slug);
   return { success: true };
 }
 
@@ -231,7 +251,17 @@ export async function removeEventImage(imageId: string) {
   await requireAdmin();
   const img = await db.query.eventImages.findFirst({ where: eq(eventImages.id, imageId) });
   if (!img) return { success: false, error: "Gambar tidak ditemukan." };
+
+  const event = await db.query.events.findFirst({ where: eq(events.id, img.eventId) });
+
   await db.delete(eventImages).where(eq(eventImages.id, imageId));
+
+  // If the deleted image was the primary, clear it so cards don't point to a dead blob.
+  if (event?.primaryImageUrl === img.imageUrl) {
+    await db.update(events).set({ primaryImageUrl: null, updatedAt: new Date() }).where(eq(events.id, img.eventId));
+  }
+
   revalidatePath(`/admin/events/${img.eventId}`);
+  revalidatePublicEventPaths(event?.slug);
   return { success: true };
 }

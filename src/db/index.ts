@@ -6,9 +6,10 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is not set");
 }
 
-// Default connection uses the Neon HTTP driver: fast, reliable single-shot
-// queries for the vast majority of reads/writes. It does NOT support interactive
-// transactions — for those, use `txDb` from "@/db/pool".
+// Neon HTTP driver: fast, reliable single-shot queries over HTTP. It does not
+// support interactive transactions (db.transaction), and the WebSocket-based
+// serverless driver fails when bundled here (ws frame-masking breaks), so flows
+// that need atomicity use db.batch([...]) instead — a single HTTP transaction.
 const sql = neon(process.env.DATABASE_URL);
 
 export const db = drizzle(sql, { schema });

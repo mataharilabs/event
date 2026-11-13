@@ -1,7 +1,6 @@
 "use server";
 
 import { db } from "@/db";
-import { txDb } from "@/db/pool";
 import { registrations, payments, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -46,16 +45,16 @@ export async function verifyManualPayment(registrationId: string) {
   const payment = await db.query.payments.findFirst({ where: eq(payments.registrationId, registrationId) });
   if (!payment) return { success: false, error: "Pembayaran tidak ditemukan." };
 
-  await txDb.transaction(async (tx) => {
-    await tx.update(payments)
+  await db.batch([
+    db.update(payments)
       .set({ status: "paid", verifiedAt: new Date(), verifiedBy: admin.id, updatedAt: new Date() })
-      .where(eq(payments.id, payment.id));
+      .where(eq(payments.id, payment.id)),
 
-    await tx.update(registrations)
+    db.update(registrations)
       .set({ status: "confirmed", paymentStatus: "paid", confirmedAt: new Date(), updatedAt: new Date() })
-      .where(eq(registrations.id, registrationId));
+      .where(eq(registrations.id, registrationId)),
 
-    await tx.insert(auditLogs).values({
+    db.insert(auditLogs).values({
       id: createId(),
       adminId: admin.id,
       action: "VERIFY_PAYMENT",
@@ -63,8 +62,8 @@ export async function verifyManualPayment(registrationId: string) {
       entityId: payment.id,
       before: { status: payment.status },
       after: { status: "paid" },
-    });
-  });
+    }),
+  ]);
 
   revalidatePath("/admin/participants");
   revalidatePath(`/admin/participants/${registrationId}`);
@@ -129,16 +128,16 @@ export async function rejectManualPayment(registrationId: string) {
   const payment = await db.query.payments.findFirst({ where: eq(payments.registrationId, registrationId) });
   if (!payment) return { success: false, error: "Pembayaran tidak ditemukan." };
 
-  await txDb.transaction(async (tx) => {
-    await tx.update(payments)
+  await db.batch([
+    db.update(payments)
       .set({ status: "failed", updatedAt: new Date() })
-      .where(eq(payments.id, payment.id));
+      .where(eq(payments.id, payment.id)),
 
-    await tx.update(registrations)
+    db.update(registrations)
       .set({ status: "pending_payment", paymentStatus: "failed", updatedAt: new Date() })
-      .where(eq(registrations.id, registrationId));
+      .where(eq(registrations.id, registrationId)),
 
-    await tx.insert(auditLogs).values({
+    db.insert(auditLogs).values({
       id: createId(),
       adminId: admin.id,
       action: "REJECT_PAYMENT",
@@ -146,8 +145,8 @@ export async function rejectManualPayment(registrationId: string) {
       entityId: payment.id,
       before: { status: payment.status },
       after: { status: "failed" },
-    });
-  });
+    }),
+  ]);
 
   revalidatePath("/admin/participants");
   revalidatePath(`/admin/participants/${registrationId}`);

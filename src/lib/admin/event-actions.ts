@@ -1,7 +1,6 @@
 "use server";
 
 import { db } from "@/db";
-import { txDb } from "@/db/pool";
 import { events, eventTickets, eventImages, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createId, createShortCode } from "@/lib/id";
@@ -151,41 +150,44 @@ export async function duplicateEvent(eventId: string) {
   const slug = generateUniqueSlug(baseSlug, existingSlugs);
   const shortCode = createShortCode();
 
-  const result = await txDb.transaction(async (tx) => {
-    const [newEvent] = await tx.insert(events).values({
-      id: createId(),
-      title: `${source.title} (Copy)`,
-      slug,
-      shortCode,
-      description: source.description,
-      primaryImageUrl: source.primaryImageUrl,
-      startDatetime: source.startDatetime,
-      endDatetime: source.endDatetime,
-      timezone: source.timezone,
-      attendanceMode: source.attendanceMode,
-      venueName: source.venueName,
-      venueAddress: source.venueAddress,
-      latitude: source.latitude,
-      longitude: source.longitude,
-      googleMapsUrl: source.googleMapsUrl,
-      onlinePlatform: source.onlinePlatform,
-      meetingUrl: source.meetingUrl,
-      theme: source.theme,
-      themeConfig: source.themeConfig,
-      seoTitle: source.seoTitle,
-      seoDescription: source.seoDescription,
-      analyticsConfig: source.analyticsConfig,
-      lifecycleStatus: "draft",
-      createdBy: admin.id,
-    }).returning();
+  // Generate the new event id up-front so the event insert and its tickets can
+  // be applied atomically in one db.batch() (a single HTTP transaction on Neon).
+  const newEventId = createId();
 
-    if (!newEvent) throw new Error("Failed to duplicate event");
+  const insertEvent = db.insert(events).values({
+    id: newEventId,
+    title: `${source.title} (Copy)`,
+    slug,
+    shortCode,
+    description: source.description,
+    primaryImageUrl: source.primaryImageUrl,
+    startDatetime: source.startDatetime,
+    endDatetime: source.endDatetime,
+    timezone: source.timezone,
+    attendanceMode: source.attendanceMode,
+    venueName: source.venueName,
+    venueAddress: source.venueAddress,
+    latitude: source.latitude,
+    longitude: source.longitude,
+    googleMapsUrl: source.googleMapsUrl,
+    onlinePlatform: source.onlinePlatform,
+    meetingUrl: source.meetingUrl,
+    theme: source.theme,
+    themeConfig: source.themeConfig,
+    seoTitle: source.seoTitle,
+    seoDescription: source.seoDescription,
+    analyticsConfig: source.analyticsConfig,
+    lifecycleStatus: "draft",
+    createdBy: admin.id,
+  });
 
-    if (source.eventTickets.length > 0) {
-      await tx.insert(eventTickets).values(
+  if (source.eventTickets.length > 0) {
+    await db.batch([
+      insertEvent,
+      db.insert(eventTickets).values(
         source.eventTickets.map((t) => ({
           id: createId(),
-          eventId: newEvent.id,
+          eventId: newEventId,
           name: t.name,
           description: t.description,
           price: t.price,
@@ -195,16 +197,16 @@ export async function duplicateEvent(eventId: string) {
           salesEnd: t.salesEnd,
           isActive: t.isActive,
         }))
-      );
-    }
+      ),
+    ]);
+  } else {
+    await insertEvent;
+  }
 
-    return newEvent;
-  });
-
-  await logAudit(admin.id, "DUPLICATE_EVENT", "events", result.id);
+  await logAudit(admin.id, "DUPLICATE_EVENT", "events", newEventId);
   revalidatePath("/admin/events");
 
-  return { success: true, eventId: result.id };
+  return { success: true, eventId: newEventId };
 }
 
 // Ticket actions

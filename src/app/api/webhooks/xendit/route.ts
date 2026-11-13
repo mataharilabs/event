@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { db } from "@/db";
-import { txDb } from "@/db/pool";
 import { payments, registrations } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { createId } from "@/lib/id";
 
 // Xendit sends x-callback-token header for verification
 export async function POST(request: NextRequest) {
@@ -54,21 +54,17 @@ export async function POST(request: NextRequest) {
 
   if (xenditStatus === "PAID" || xenditStatus === "SETTLED") {
     try {
-      await txDb.transaction(async (tx) => {
-        // Update payment
-        if (existingPayment) {
-          await tx
+      const paidAt = payload.paid_at ? new Date(payload.paid_at) : new Date();
+
+      // Payment update-or-insert + registration confirmation, applied atomically
+      // via db.batch() (a single HTTP transaction on Neon). The serverless HTTP
+      // driver does not support interactive transactions.
+      const paymentOp = existingPayment
+        ? db
             .update(payments)
-            .set({
-              status: "paid",
-              paidAt: payload.paid_at ? new Date(payload.paid_at) : new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(payments.id, existingPayment.id));
-        } else {
-          // Payment record not pre-created — create it now
-          const { createId } = await import("@/lib/id");
-          await tx.insert(payments).values({
+            .set({ status: "paid", paidAt, updatedAt: new Date() })
+            .where(eq(payments.id, existingPayment.id))
+        : db.insert(payments).values({
             id: createId(),
             registrationId,
             provider: "xendit",
@@ -76,12 +72,12 @@ export async function POST(request: NextRequest) {
             currency: "IDR",
             status: "paid",
             externalPaymentId: payload.id,
-            paidAt: payload.paid_at ? new Date(payload.paid_at) : new Date(),
+            paidAt,
           });
-        }
 
-        // Update registration
-        await tx
+      await db.batch([
+        paymentOp,
+        db
           .update(registrations)
           .set({
             status: "confirmed",
@@ -89,8 +85,8 @@ export async function POST(request: NextRequest) {
             confirmedAt: new Date(),
             updatedAt: new Date(),
           })
-          .where(eq(registrations.id, registrationId));
-      });
+          .where(eq(registrations.id, registrationId)),
+      ]);
 
       // Fire payment confirmation notification (non-blocking)
       firePaymentNotification(registrationId).catch((err) =>

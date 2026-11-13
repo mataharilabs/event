@@ -2,7 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { txDb } from "@/db/pool";
 import { events, eventTickets, registrations } from "@/db/schema";
 import { eq, and, count, sql, or } from "drizzle-orm";
 import { createId, createRegistrationCode } from "@/lib/id";
@@ -62,55 +61,54 @@ export async function createRegistration(input: {
     return { success: false, error: "Kamu sudah memiliki registrasi untuk event ini." };
   }
 
-  const result = await txDb.transaction(async (tx) => {
-    // Quota check inside transaction for concurrency safety
-    if (ticket.quota !== null) {
-      const [soldResult] = await tx
-        .select({ sold: count(registrations.id) })
-        .from(registrations)
-        .where(
-          and(
-            eq(registrations.ticketId, ticket.id),
-            sql`${registrations.status} NOT IN ('cancelled')`
-          )
-        );
-      const sold = Number(soldResult?.sold ?? 0);
-      if (sold >= ticket.quota) {
-        return { success: false as const, error: "Maaf, tiket ini sudah habis." };
-      }
+  // Quota check. A free registration involves no payment/transaction; we simply
+  // guard against overselling with a count before insert. (Interactive
+  // transactions aren't used — the serverless HTTP driver doesn't support them,
+  // and the previous count-then-insert wasn't row-locked anyway.)
+  if (ticket.quota !== null) {
+    const [soldResult] = await db
+      .select({ sold: count(registrations.id) })
+      .from(registrations)
+      .where(
+        and(
+          eq(registrations.ticketId, ticket.id),
+          sql`${registrations.status} NOT IN ('cancelled')`
+        )
+      );
+    const sold = Number(soldResult?.sold ?? 0);
+    if (sold >= ticket.quota) {
+      return { success: false, error: "Maaf, tiket ini sudah habis." };
     }
+  }
 
-    const registrationCode = createRegistrationCode(now.getFullYear());
-    const isFree = ticket.price === 0;
+  const registrationCode = createRegistrationCode(now.getFullYear());
+  const isFree = ticket.price === 0;
 
-    const [reg] = await tx
-      .insert(registrations)
-      .values({
-        id: createId(),
-        eventId: input.eventId,
-        userId,
-        ticketId: ticket.id,
-        registrationCode,
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        status: isFree ? "confirmed" : "pending_payment",
-        paymentStatus: isFree ? "paid" : "pending",
-        confirmedAt: isFree ? new Date() : null,
-      })
-      .returning();
+  const [reg] = await db
+    .insert(registrations)
+    .values({
+      id: createId(),
+      eventId: input.eventId,
+      userId,
+      ticketId: ticket.id,
+      registrationCode,
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      status: isFree ? "confirmed" : "pending_payment",
+      paymentStatus: isFree ? "paid" : "pending",
+      confirmedAt: isFree ? new Date() : null,
+    })
+    .returning();
 
-    if (!reg) {
-      return { success: false as const, error: "Gagal membuat registrasi." };
-    }
+  if (!reg) {
+    return { success: false, error: "Gagal membuat registrasi." };
+  }
 
-    return {
-      success: true as const,
-      registrationId: reg.id,
-      registrationCode: reg.registrationCode,
-      isFree,
-    };
-  });
-
-  return result;
+  return {
+    success: true,
+    registrationId: reg.id,
+    registrationCode: reg.registrationCode,
+    isFree,
+  };
 }

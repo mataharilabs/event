@@ -46,6 +46,12 @@ export async function createRegistration(input: {
     return { success: false, error: "Penjualan tiket sudah berakhir." };
   }
 
+  // Paid tickets require an account (needed for the payment flow & tracking).
+  // Free tickets allow guest registration.
+  if (ticket.price > 0 && !userId) {
+    return { success: false, error: "Silakan login terlebih dahulu untuk mendaftar tiket berbayar." };
+  }
+
   // Check duplicate (allow re-register if previous was cancelled).
   // A participant is identified by their account when logged in, otherwise by
   // the email they register with.

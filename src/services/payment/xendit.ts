@@ -2,16 +2,21 @@ import type { PaymentService, CreatePaymentParams, PaymentResult } from "./types
 
 const XENDIT_BASE_URL = "https://api.xendit.co";
 
+export interface XenditConfig {
+  secretKey: string;
+  webhookToken: string;
+}
+
 export class XenditPaymentService implements PaymentService {
   private readonly secretKey: string;
   private readonly webhookToken: string;
 
-  constructor() {
-    const key = process.env.XENDIT_SECRET_KEY;
-    const token = process.env.XENDIT_WEBHOOK_TOKEN;
-    if (!key || !token) throw new Error("Xendit credentials not configured");
-    this.secretKey = key;
-    this.webhookToken = token;
+  constructor(config: XenditConfig) {
+    if (!config.secretKey || !config.webhookToken) {
+      throw new Error("Xendit credentials not configured");
+    }
+    this.secretKey = config.secretKey;
+    this.webhookToken = config.webhookToken;
   }
 
   async createPayment(params: CreatePaymentParams): Promise<PaymentResult> {
@@ -62,6 +67,17 @@ export class XenditPaymentService implements PaymentService {
   }
 }
 
-export function getXenditService(): XenditPaymentService {
-  return new XenditPaymentService();
+/**
+ * Build a Xendit service from admin-configured settings, falling back to env.
+ * Returns null if no credentials are available.
+ */
+export async function getXenditService(): Promise<XenditPaymentService | null> {
+  const { getPaymentSettings } = await import("@/lib/settings/payment");
+  const s = await getPaymentSettings();
+
+  const secretKey = s.xenditSecretKey || process.env.XENDIT_SECRET_KEY || "";
+  const webhookToken = s.xenditWebhookToken || process.env.XENDIT_WEBHOOK_TOKEN || "";
+
+  if (!secretKey || !webhookToken) return null;
+  return new XenditPaymentService({ secretKey, webhookToken });
 }

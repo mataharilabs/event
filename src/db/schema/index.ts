@@ -6,6 +6,7 @@ export * from "./registration-fields";
 export * from "./registrations";
 export * from "./registration-answers";
 export * from "./payments";
+export * from "./payment-settings";
 export * from "./notifications";
 export * from "./short-links";
 export * from "./event-analytics";

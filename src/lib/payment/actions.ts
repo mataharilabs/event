@@ -34,7 +34,8 @@ export async function initiateXenditPayment(registrationId: string): Promise<
 
   try {
     const { getXenditService } = await import("@/services/payment/xendit");
-    const xendit = getXenditService();
+    const xendit = await getXenditService();
+    if (!xendit) return { success: false, error: "Xendit belum dikonfigurasi." };
 
     const result = await xendit.createPayment({
       registrationId,
@@ -65,6 +66,65 @@ export async function initiateXenditPayment(registrationId: string): Promise<
   } catch (err) {
     console.error("Xendit payment error:", err);
     return { success: false, error: "Gagal membuat tagihan Xendit. Coba lagi." };
+  }
+}
+
+export async function initiateMidtransPayment(registrationId: string): Promise<
+  { success: true; invoiceUrl: string } | { success: false; error: string }
+> {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const reg = await db.query.registrations.findFirst({
+    where: eq(registrations.id, registrationId),
+    with: { ticket: true, event: true },
+  });
+
+  if (!reg) return { success: false, error: "Registrasi tidak ditemukan." };
+  if (reg.userId !== session.user.id) return { success: false, error: "Akses tidak diizinkan." };
+  if (reg.status === "confirmed") return { success: false, error: "Registrasi sudah dikonfirmasi." };
+
+  const existingPayment = await db.query.payments.findFirst({
+    where: eq(payments.registrationId, registrationId),
+  });
+
+  if (existingPayment?.externalInvoiceUrl && existingPayment.status === "pending") {
+    return { success: true, invoiceUrl: existingPayment.externalInvoiceUrl };
+  }
+
+  try {
+    const { getMidtransService } = await import("@/services/payment/midtrans");
+    const midtrans = await getMidtransService();
+    if (!midtrans) return { success: false, error: "Midtrans belum dikonfigurasi." };
+
+    const result = await midtrans.createPayment({
+      registrationId,
+      amount: reg.ticket.price,
+      currency: reg.ticket.currency,
+      email: reg.email,
+      name: reg.name,
+      description: `Tiket ${reg.ticket.name} - ${reg.event.title}`,
+    });
+
+    await db.insert(payments).values({
+      id: createId(),
+      registrationId,
+      provider: "midtrans",
+      amount: reg.ticket.price,
+      currency: reg.ticket.currency,
+      status: "pending",
+      externalPaymentId: result.externalPaymentId,
+      externalInvoiceUrl: result.invoiceUrl ?? null,
+    });
+
+    await db.update(registrations)
+      .set({ status: "pending_payment", paymentStatus: "pending", updatedAt: new Date() })
+      .where(eq(registrations.id, registrationId));
+
+    return { success: true, invoiceUrl: result.invoiceUrl! };
+  } catch (err) {
+    console.error("Midtrans payment error:", err);
+    return { success: false, error: "Gagal membuat transaksi Midtrans. Coba lagi." };
   }
 }
 

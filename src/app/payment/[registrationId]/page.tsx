@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { PaymentOptions } from "./payment-options";
+import { getEnabledPaymentMethods } from "@/lib/settings/payment";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -57,6 +58,8 @@ export default async function PaymentPage({ params, searchParams }: PageProps) {
     redirect("/my-events");
   }
 
+  const methods = await getEnabledPaymentMethods();
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-lg mx-auto space-y-6">
@@ -101,6 +104,7 @@ export default async function PaymentPage({ params, searchParams }: PageProps) {
           registrationId={registrationId}
           amount={reg.ticket.price}
           currentStatus={reg.status}
+          methods={methods}
         />
       </div>
     </div>

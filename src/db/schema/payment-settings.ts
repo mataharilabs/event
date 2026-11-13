@@ -1,0 +1,40 @@
+import { pgTable, text, boolean, timestamp } from "drizzle-orm/pg-core";
+
+/**
+ * Singleton table (one row, id = "default") holding platform-wide payment
+ * configuration managed by admins at /admin/settings.
+ *
+ * Secret keys are stored here so admins can configure gateways without a
+ * redeploy. They are read server-side only and are NEVER sent to the browser
+ * (the admin form receives booleans indicating whether a secret is set).
+ */
+export const paymentSettings = pgTable("payment_settings", {
+  id: text("id").primaryKey().default("default"),
+
+  // Xendit (auto confirmation via webhook)
+  xenditEnabled: boolean("xendit_enabled").notNull().default(false),
+  xenditSecretKey: text("xendit_secret_key"),
+  xenditWebhookToken: text("xendit_webhook_token"),
+
+  // Midtrans (auto confirmation via webhook)
+  midtransEnabled: boolean("midtrans_enabled").notNull().default(false),
+  midtransServerKey: text("midtrans_server_key"),
+  midtransClientKey: text("midtrans_client_key"),
+  midtransIsProduction: boolean("midtrans_is_production").notNull().default(false),
+
+  // Bank transfer (manual confirmation)
+  bankTransferEnabled: boolean("bank_transfer_enabled").notNull().default(false),
+  bankName: text("bank_name"),
+  bankAccountNumber: text("bank_account_number"),
+  bankAccountHolder: text("bank_account_holder"),
+  bankInstructions: text("bank_instructions"),
+
+  // Static QRIS (manual confirmation)
+  qrisEnabled: boolean("qris_enabled").notNull().default(false),
+  qrisImageUrl: text("qris_image_url"),
+
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PaymentSettings = typeof paymentSettings.$inferSelect;
+export type NewPaymentSettings = typeof paymentSettings.$inferInsert;

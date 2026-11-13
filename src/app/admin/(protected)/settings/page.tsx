@@ -1,5 +1,7 @@
 import { auth } from "@/lib/auth";
 import { getAdminSession } from "@/lib/auth/admin";
+import { getPaymentSettingsForAdmin } from "@/lib/settings/payment";
+import { PaymentSettingsForm } from "@/components/admin/payment-settings-form";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,7 +10,11 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const [session, admin] = await Promise.all([auth(), getAdminSession()]);
+  const [session, admin, paymentSettings] = await Promise.all([
+    auth(),
+    getAdminSession(),
+    getPaymentSettingsForAdmin(),
+  ]);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -58,6 +64,9 @@ export default async function SettingsPage() {
           <Row label="Environment" value={process.env.NODE_ENV ?? "—"} />
         </div>
       </div>
+
+      {/* Payment methods */}
+      <PaymentSettingsForm settings={paymentSettings} />
     </div>
   );
 }

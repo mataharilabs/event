@@ -12,6 +12,7 @@ import { adminUsers } from "./admin-users";
 
 export const paymentProviderEnum = pgEnum("payment_provider", [
   "xendit",
+  "midtrans",
   "manual",
   "qris",
 ]);

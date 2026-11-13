@@ -8,7 +8,10 @@ import { createId } from "@/lib/id";
 // Xendit sends x-callback-token header for verification
 export async function POST(request: NextRequest) {
   const callbackToken = request.headers.get("x-callback-token");
-  const expectedToken = process.env.XENDIT_WEBHOOK_TOKEN;
+
+  const { getPaymentSettings } = await import("@/lib/settings/payment");
+  const settings = await getPaymentSettings().catch(() => null);
+  const expectedToken = settings?.xenditWebhookToken || process.env.XENDIT_WEBHOOK_TOKEN;
 
   if (!expectedToken || callbackToken !== expectedToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -10,12 +10,20 @@ import { Badge } from "@/components/ui/badge";
 import { createRegistration } from "@/lib/participant/registration-actions";
 import { formatCurrency } from "@/lib/format";
 import { CheckCircle2, Ticket } from "lucide-react";
-import type { EventTicket } from "@/db/schema";
+
+/** Minimal ticket shape the form needs — a full EventTicket is assignable. */
+export interface RegistrationTicket {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  quota: number | null;
+}
 
 interface RegistrationFormProps {
   eventId: string;
   eventTitle: string;
-  tickets: EventTicket[];
+  tickets: RegistrationTicket[];
   isAuthenticated: boolean;
   defaultName: string;
   defaultEmail: string;

@@ -7,7 +7,7 @@ import type { NotificationType } from "@/types";
 interface SendNotificationParams {
   registrationId: string;
   eventId: string;
-  userId: string;
+  userId: string | null;
   type: NotificationType;
   email: { to: string; subject: string; html: string; text?: string } | null;
   whatsapp: { to: string; message: string } | null;

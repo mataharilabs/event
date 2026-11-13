@@ -3,7 +3,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { events, eventTickets, registrations } from "@/db/schema";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, or } from "drizzle-orm";
 import { createId, createRegistrationCode } from "@/lib/id";
 
 export async function createRegistration(input: {
@@ -16,10 +16,9 @@ export async function createRegistration(input: {
   | { success: false; error: string }
   | { success: true; registrationId: string; registrationCode: string; isFree: boolean }
 > {
+  // Login is optional: guests may register (identified by email).
   const session = await auth();
-  if (!session?.user?.id) {
-    return { success: false, error: "Login diperlukan untuk mendaftar." };
-  }
+  const userId = session?.user?.id ?? null;
 
   const event = await db.query.events.findFirst({
     where: and(eq(events.id, input.eventId), eq(events.lifecycleStatus, "published")),
@@ -47,9 +46,16 @@ export async function createRegistration(input: {
     return { success: false, error: "Penjualan tiket sudah berakhir." };
   }
 
-  // Check duplicate (allow re-register if previous was cancelled)
+  // Check duplicate (allow re-register if previous was cancelled).
+  // A participant is identified by their account when logged in, otherwise by
+  // the email they register with.
   const existing = await db.query.registrations.findFirst({
-    where: and(eq(registrations.eventId, input.eventId), eq(registrations.userId, session.user.id!)),
+    where: and(
+      eq(registrations.eventId, input.eventId),
+      userId
+        ? or(eq(registrations.userId, userId), eq(registrations.email, input.email))
+        : eq(registrations.email, input.email)
+    ),
   });
   if (existing && existing.status !== "cancelled") {
     return { success: false, error: "Kamu sudah memiliki registrasi untuk event ini." };
@@ -81,7 +87,7 @@ export async function createRegistration(input: {
       .values({
         id: createId(),
         eventId: input.eventId,
-        userId: session.user.id!,
+        userId,
         ticketId: ticket.id,
         registrationCode,
         name: input.name,

@@ -15,6 +15,7 @@ interface RegistrationFormProps {
   eventId: string;
   eventTitle: string;
   tickets: EventTicket[];
+  isAuthenticated: boolean;
   defaultName: string;
   defaultEmail: string;
   defaultPhone: string;
@@ -29,6 +30,7 @@ export function RegistrationForm({
   eventId,
   eventTitle,
   tickets,
+  isAuthenticated,
   defaultName,
   defaultEmail,
   defaultPhone,
@@ -89,9 +91,20 @@ export function RegistrationForm({
         <p className="text-sm text-muted-foreground">
           Detail registrasi dikirim ke <strong>{email}</strong>
         </p>
-        <Button className="w-full" onClick={() => router.push("/my-events")}>
-          Lihat Event Saya
-        </Button>
+        {!success.isFree && (
+          <p className="text-xs text-muted-foreground">
+            Simpan kode registrasi ini untuk proses pembayaran.
+          </p>
+        )}
+        {isAuthenticated ? (
+          <Button className="w-full" onClick={() => router.push("/my-events")}>
+            Lihat Event Saya
+          </Button>
+        ) : (
+          <Button className="w-full" variant="outline" onClick={() => router.push("/")}>
+            Kembali ke Beranda
+          </Button>
+        )}
       </div>
     );
   }

@@ -39,9 +39,8 @@ export const notifications = pgTable(
     eventId: text("event_id")
       .notNull()
       .references(() => events.id),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id),
+    // Nullable: notifications for guest (account-less) registrations.
+    userId: text("user_id").references(() => users.id),
     channel: notificationChannelEnum("channel").notNull(),
     type: notificationTypeEnum("type").notNull(),
     status: notificationStatusEnum("status").notNull().default("pending"),

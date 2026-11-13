@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Calendar, MapPin, ChevronLeft } from "lucide-react";
 import { auth } from "@/lib/auth";
@@ -7,7 +7,6 @@ import { events, eventTickets } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { RegistrationForm } from "@/components/events/registration-form";
 import { formatDate, formatTime, formatCurrency } from "@/lib/format";
-import { APP_URL } from "@/config";
 import type { Metadata } from "next";
 
 interface PageProps {
@@ -44,11 +43,8 @@ export default async function RegisterPage({ params }: PageProps) {
 
   if (!event) notFound();
 
-  // Not logged in → redirect to login with callbackUrl
-  if (!session?.user?.id) {
-    const callbackUrl = `${APP_URL}/register/${eventId}`;
-    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
-  }
+  // Login is optional — guests can register for free events without an account.
+  const isAuthenticated = !!session?.user?.id;
 
   // Filter tickets that are currently on sale
   const now = new Date();
@@ -103,8 +99,9 @@ export default async function RegisterPage({ params }: PageProps) {
           eventId={event.id}
           eventTitle={event.title}
           tickets={availableTickets}
-          defaultName={session.user.name ?? ""}
-          defaultEmail={session.user.email ?? ""}
+          isAuthenticated={isAuthenticated}
+          defaultName={session?.user?.name ?? ""}
+          defaultEmail={session?.user?.email ?? ""}
           defaultPhone={""}
         />
       </div>

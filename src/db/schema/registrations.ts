@@ -36,9 +36,8 @@ export const registrations = pgTable(
     eventId: text("event_id")
       .notNull()
       .references(() => events.id),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id),
+    // Nullable: free events allow guest registration without an account.
+    userId: text("user_id").references(() => users.id),
     ticketId: text("ticket_id")
       .notNull()
       .references(() => eventTickets.id),

@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { txDb } from "@/db/pool";
 import { events, eventTickets, eventImages, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createId, createShortCode } from "@/lib/id";
@@ -150,7 +151,7 @@ export async function duplicateEvent(eventId: string) {
   const slug = generateUniqueSlug(baseSlug, existingSlugs);
   const shortCode = createShortCode();
 
-  const result = await db.transaction(async (tx) => {
+  const result = await txDb.transaction(async (tx) => {
     const [newEvent] = await tx.insert(events).values({
       id: createId(),
       title: `${source.title} (Copy)`,

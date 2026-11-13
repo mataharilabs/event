@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/db";
+import { txDb } from "@/db/pool";
 import { registrations, payments, auditLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -45,7 +46,7 @@ export async function verifyManualPayment(registrationId: string) {
   const payment = await db.query.payments.findFirst({ where: eq(payments.registrationId, registrationId) });
   if (!payment) return { success: false, error: "Pembayaran tidak ditemukan." };
 
-  await db.transaction(async (tx) => {
+  await txDb.transaction(async (tx) => {
     await tx.update(payments)
       .set({ status: "paid", verifiedAt: new Date(), verifiedBy: admin.id, updatedAt: new Date() })
       .where(eq(payments.id, payment.id));
@@ -128,7 +129,7 @@ export async function rejectManualPayment(registrationId: string) {
   const payment = await db.query.payments.findFirst({ where: eq(payments.registrationId, registrationId) });
   if (!payment) return { success: false, error: "Pembayaran tidak ditemukan." };
 
-  await db.transaction(async (tx) => {
+  await txDb.transaction(async (tx) => {
     await tx.update(payments)
       .set({ status: "failed", updatedAt: new Date() })
       .where(eq(payments.id, payment.id));

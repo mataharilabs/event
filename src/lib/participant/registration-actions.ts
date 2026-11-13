@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
+import { txDb } from "@/db/pool";
 import { events, eventTickets, registrations } from "@/db/schema";
 import { eq, and, count, sql, or } from "drizzle-orm";
 import { createId, createRegistrationCode } from "@/lib/id";
@@ -61,7 +62,7 @@ export async function createRegistration(input: {
     return { success: false, error: "Kamu sudah memiliki registrasi untuk event ini." };
   }
 
-  const result = await db.transaction(async (tx) => {
+  const result = await txDb.transaction(async (tx) => {
     // Quota check inside transaction for concurrency safety
     if (ticket.quota !== null) {
       const [soldResult] = await tx

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { db } from "@/db";
+import { txDb } from "@/db/pool";
 import { payments, registrations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   if (xenditStatus === "PAID" || xenditStatus === "SETTLED") {
     try {
-      await db.transaction(async (tx) => {
+      await txDb.transaction(async (tx) => {
         // Update payment
         if (existingPayment) {
           await tx

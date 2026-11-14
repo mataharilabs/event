@@ -12,8 +12,8 @@ export function Footer() {
             <Link href="/events" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Events
             </Link>
-            <Link href="/login" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Login
+            <Link href="/admin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Admin Login
             </Link>
           </nav>
         </div>

@@ -1,17 +1,29 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EventSection } from "@/components/events/event-section";
-import { getPublishedEventsForCards } from "@/lib/events/queries";
+import { getPublishedEventsForCards, getEventBySlug } from "@/lib/events/queries";
 import { getEventDisplayStatus } from "@/lib/events/display-status";
+import { buildEventMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "AsiaCommerce Event — Discover Our Events",
-  description:
-    "Temukan dan ikuti event, workshop, webinar, dan aktivitas komunitas AsiaCommerce.",
-};
-
-export const revalidate = 300;
+// When the on-page modal is open (/?event=<slug>), expose the event's SEO/OG so
+// shared modal URLs preview the event (canonical still points to /[slug]).
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>;
+}): Promise<Metadata> {
+  const { event } = await searchParams;
+  if (event) {
+    const ev = await getEventBySlug(event).catch(() => null);
+    if (ev) return buildEventMetadata(ev);
+  }
+  return {
+    title: "AsiaCommerce Event — Discover Our Events",
+    description:
+      "Temukan dan ikuti event, workshop, webinar, dan aktivitas komunitas AsiaCommerce.",
+  };
+}
 
 export default async function HomePage() {
   let allEvents: Awaited<ReturnType<typeof getPublishedEventsForCards>> = [];

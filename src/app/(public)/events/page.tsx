@@ -1,14 +1,26 @@
 import { Suspense } from "react";
 import { EventCard } from "@/components/events/event-card";
 import { EventsFilter } from "@/components/events/events-filter";
-import { getFilteredEvents } from "@/lib/events/queries";
+import { getFilteredEvents, getEventBySlug } from "@/lib/events/queries";
+import { buildEventMetadata } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Events",
-  description: "Temukan semua event AsiaCommerce — workshop, webinar, dan aktivitas komunitas.",
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ event?: string }>;
+}): Promise<Metadata> {
+  const { event } = await searchParams;
+  if (event) {
+    const ev = await getEventBySlug(event).catch(() => null);
+    if (ev) return buildEventMetadata(ev);
+  }
+  return {
+    title: "Events",
+    description: "Temukan semua event AsiaCommerce — workshop, webinar, dan aktivitas komunitas.",
+    robots: { index: true, follow: true },
+  };
+}
 
 interface PageProps {
   searchParams: Promise<{

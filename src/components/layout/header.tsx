@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
-  isLoggedIn?: boolean;
   logoUrl?: string | null;
 }
 
-export function Header({ isLoggedIn = false, logoUrl }: HeaderProps) {
+export function Header({ logoUrl }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -34,20 +32,9 @@ export function Header({ isLoggedIn = false, logoUrl }: HeaderProps) {
             <Link href="/events" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
               Events
             </Link>
-            {isLoggedIn ? (
-              <>
-                <Link href="/my-events" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
-                  My Events
-                </Link>
-                <Link href="/profile" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
-                  Profile
-                </Link>
-              </>
-            ) : (
-              <Button asChild size="sm">
-                <Link href="/login">Login</Link>
-              </Button>
-            )}
+            <Link href="/admin" className="text-sm font-medium text-foreground/50 hover:text-foreground transition-colors">
+              Admin Login
+            </Link>
           </nav>
 
           {/* Mobile menu button */}
@@ -77,20 +64,13 @@ export function Header({ isLoggedIn = false, logoUrl }: HeaderProps) {
             >
               Events
             </Link>
-            {isLoggedIn ? (
-              <>
-                <Link href="/my-events" className="text-sm font-medium py-1" onClick={() => setMobileMenuOpen(false)}>
-                  My Events
-                </Link>
-                <Link href="/profile" className="text-sm font-medium py-1" onClick={() => setMobileMenuOpen(false)}>
-                  Profile
-                </Link>
-              </>
-            ) : (
-              <Button asChild size="sm" className="w-full mt-2">
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link>
-              </Button>
-            )}
+            <Link
+              href="/admin"
+              className="text-sm font-medium py-1 text-foreground/60"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Admin Login
+            </Link>
           </nav>
         )}
       </div>

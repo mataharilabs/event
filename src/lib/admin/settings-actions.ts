@@ -65,6 +65,9 @@ export async function updatePaymentSettings(
 
   console.warn("[settings] payment settings updated by admin");
   revalidatePath("/admin/settings");
+  // Branding (logo/favicon/site SEO) lives in the public layout + root metadata,
+  // which are ISR-cached — revalidate the whole tree so changes show immediately.
+  revalidatePath("/", "layout");
 
   return { success: true };
 }

@@ -7,6 +7,7 @@ import { EventForm } from "@/components/admin/event-form";
 import { TicketBuilder } from "@/components/admin/ticket-builder";
 import { EventActionButtons } from "@/components/admin/event-actions";
 import { ImageManager } from "@/components/admin/image-manager";
+import { RegistrationFieldsBuilder } from "@/components/admin/registration-fields-builder";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime } from "@/lib/format";
 import type { Metadata } from "next";
@@ -104,6 +105,12 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
       <div className="bg-white rounded-xl border p-6">
         <h2 className="font-semibold mb-4">Tiket</h2>
         <TicketBuilder eventId={event.id} tickets={event.eventTickets} />
+      </div>
+
+      {/* Registration form fields */}
+      <div className="bg-white rounded-xl border p-6">
+        <h2 className="font-semibold mb-4">Form Pendaftaran</h2>
+        <RegistrationFieldsBuilder eventId={event.id} fields={event.registrationFields} />
       </div>
 
       {/* Edit form */}

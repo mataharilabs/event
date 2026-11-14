@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createRegistration } from "@/lib/participant/registration-actions";
 import { formatCurrency } from "@/lib/format";
 import { CheckCircle2, Ticket } from "lucide-react";
@@ -19,6 +21,14 @@ export interface RegistrationTicket {
   quota: number | null;
 }
 
+export interface CustomField {
+  id: string;
+  label: string;
+  type: string;
+  required: boolean;
+  options: string[] | null;
+}
+
 interface RegistrationFormProps {
   eventId: string;
   eventTitle: string;
@@ -27,6 +37,7 @@ interface RegistrationFormProps {
   defaultName: string;
   defaultEmail: string;
   defaultPhone: string;
+  fields?: CustomField[];
 }
 
 interface SuccessState {
@@ -42,6 +53,7 @@ export function RegistrationForm({
   defaultName,
   defaultEmail,
   defaultPhone,
+  fields = [],
 }: RegistrationFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -49,6 +61,7 @@ export function RegistrationForm({
   const [name, setName] = useState(defaultName);
   const [email, setEmail] = useState(defaultEmail);
   const [phone, setPhone] = useState(defaultPhone);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<SuccessState | null>(null);
 
@@ -61,6 +74,13 @@ export function RegistrationForm({
     if (!email.trim()) { setError("Email wajib diisi."); return; }
     if (!phone.trim()) { setError("Nomor WhatsApp wajib diisi."); return; }
 
+    for (const f of fields) {
+      if (f.required && !answers[f.id]?.trim()) {
+        setError(`${f.label} wajib diisi.`);
+        return;
+      }
+    }
+
     setError(null);
     startTransition(async () => {
       const result = await createRegistration({
@@ -69,6 +89,9 @@ export function RegistrationForm({
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim(),
+        answers: fields
+          .map((f) => ({ fieldId: f.id, value: answers[f.id] ?? "" }))
+          .filter((a) => a.value.trim()),
       });
 
       if (!result.success) {
@@ -222,6 +245,40 @@ export function RegistrationForm({
             required
           />
         </div>
+
+        {/* Custom fields */}
+        {fields.map((f) => {
+          const val = answers[f.id] ?? "";
+          const setVal = (v: string) => setAnswers((prev) => ({ ...prev, [f.id]: v }));
+          return (
+            <div key={f.id} className="space-y-1.5">
+              <Label htmlFor={`field-${f.id}`}>
+                {f.label} {f.required && <span className="text-destructive">*</span>}
+              </Label>
+              {f.type === "textarea" ? (
+                <Textarea id={`field-${f.id}`} value={val} onChange={(e) => setVal(e.target.value)} rows={2} />
+              ) : f.type === "dropdown" ? (
+                <Select value={val} onValueChange={setVal}>
+                  <SelectTrigger id={`field-${f.id}`}>
+                    <SelectValue placeholder="Pilih..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(f.options ?? []).map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id={`field-${f.id}`}
+                  type={f.type === "number" ? "number" : "text"}
+                  value={val}
+                  onChange={(e) => setVal(e.target.value)}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {error && (

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { RegistrationForm, type RegistrationTicket } from "./registration-form";
+import { RegistrationForm, type RegistrationTicket, type CustomField } from "./registration-form";
 import { formatDate, formatTime, formatCurrency } from "@/lib/format";
 import { getEventDisplayStatus, getCountdownLabel } from "@/lib/events/display-status";
 import { X, MapPin, Calendar, Clock, Share2, ChevronLeft, ExternalLink, Loader2 } from "lucide-react";
@@ -29,6 +29,7 @@ interface ModalEvent {
 interface ModalData {
   event: ModalEvent;
   tickets: (RegistrationTicket & { currency: string })[];
+  fields: CustomField[];
   viewer: { isAuthenticated: boolean; name: string; email: string };
 }
 
@@ -151,7 +152,7 @@ function ModalBody({
   onStep: (s: "detail" | "register") => void;
   onClose: () => void;
 }) {
-  const { event, tickets, viewer } = data;
+  const { event, tickets, fields, viewer } = data;
   const start = new Date(event.startDatetime);
   const end = new Date(event.endDatetime);
   const displayStatus = getEventDisplayStatus(
@@ -265,6 +266,7 @@ function ModalBody({
               defaultName={viewer.name}
               defaultEmail={viewer.email}
               defaultPhone=""
+              fields={fields}
             />
           </div>
         )}

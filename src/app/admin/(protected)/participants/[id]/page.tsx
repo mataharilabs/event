@@ -99,6 +99,18 @@ export default async function ParticipantDetailPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Jawaban field tambahan */}
+      {data.answers.length > 0 && (
+        <div className="bg-white rounded-xl border p-6">
+          <h2 className="font-semibold mb-3">Informasi Tambahan</h2>
+          <div>
+            {data.answers.map((a) => (
+              <InfoRow key={a.id} label={a.field.label} value={a.value ?? "-"} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Info event */}
       <div className="bg-white rounded-xl border p-6">
         <h2 className="font-semibold mb-3">Event & Tiket</h2>

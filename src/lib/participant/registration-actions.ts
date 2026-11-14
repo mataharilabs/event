@@ -2,7 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { events, eventTickets, registrations } from "@/db/schema";
+import { events, eventTickets, registrations, registrationAnswers } from "@/db/schema";
 import { eq, and, count, sql, or } from "drizzle-orm";
 import { createId, createRegistrationCode } from "@/lib/id";
 
@@ -12,6 +12,7 @@ export async function createRegistration(input: {
   name: string;
   email: string;
   phone: string;
+  answers?: { fieldId: string; value: string }[];
 }): Promise<
   | { success: false; error: string }
   | { success: true; registrationId: string; registrationCode: string; isFree: boolean }
@@ -103,6 +104,15 @@ export async function createRegistration(input: {
 
   if (!reg) {
     return { success: false, error: "Gagal membuat registrasi." };
+  }
+
+  // Save answers to custom registration fields.
+  const answers = (input.answers ?? []).filter((a) => a.fieldId && a.value?.trim());
+  if (answers.length > 0) {
+    await db
+      .insert(registrationAnswers)
+      .values(answers.map((a) => ({ id: createId(), registrationId: reg.id, fieldId: a.fieldId, value: a.value.trim() })))
+      .catch((err) => console.error("Failed to save registration answers:", err));
   }
 
   // Send confirmation (free) or payment link (paid) via email + WhatsApp.

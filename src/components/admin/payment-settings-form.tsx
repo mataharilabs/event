@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   updatePaymentSettings,
   uploadQrisImage,
+  uploadBrandingImage,
 } from "@/lib/admin/settings-actions";
 import type { AdminPaymentSettings } from "@/lib/settings/payment";
 import { CreditCard, Building2, QrCode, Zap, Loader2, CheckCircle2, Upload, Mail, MessageCircle } from "lucide-react";
@@ -44,6 +45,13 @@ export function PaymentSettingsForm({ settings }: Props) {
   const [whatsappEnabled, setWhatsappEnabled] = useState(settings.whatsappEnabled);
   const [whatsappApiUrl, setWhatsappApiUrl] = useState(settings.whatsappApiUrl);
 
+  const [logoUrl, setLogoUrl] = useState<string | null>(settings.logoUrl);
+  const [faviconUrl, setFaviconUrl] = useState<string | null>(settings.faviconUrl);
+  const [siteOgImageUrl, setSiteOgImageUrl] = useState<string | null>(settings.siteOgImageUrl);
+  const [siteSeoTitle, setSiteSeoTitle] = useState(settings.siteSeoTitle);
+  const [siteSeoDescription, setSiteSeoDescription] = useState(settings.siteSeoDescription);
+  const [brandingUploading, setBrandingUploading] = useState<string | null>(null);
+
   // Secret inputs — empty means "keep stored value"
   const [xenditSecretKey, setXenditSecretKey] = useState("");
   const [xenditWebhookToken, setXenditWebhookToken] = useState("");
@@ -76,6 +84,20 @@ export function PaymentSettingsForm({ settings }: Props) {
       });
   }
 
+  function handleBrandingUpload(kind: "logo" | "favicon" | "og", file: File, set: (url: string) => void) {
+    setError(null);
+    setBrandingUploading(kind);
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("kind", kind);
+    uploadBrandingImage(fd)
+      .then((res) => {
+        if (res.success) set(res.url);
+        else setError(res.error);
+      })
+      .finally(() => setBrandingUploading(null));
+  }
+
   function handleSave() {
     setError(null);
     setSaved(false);
@@ -101,6 +123,11 @@ export function PaymentSettingsForm({ settings }: Props) {
         whatsappEnabled,
         whatsappApiUrl,
         whatsappApiKey: whatsappApiKey || undefined,
+        logoUrl: logoUrl ?? "",
+        faviconUrl: faviconUrl ?? "",
+        siteOgImageUrl: siteOgImageUrl ?? "",
+        siteSeoTitle,
+        siteSeoDescription,
       });
       if (!res.success) {
         setError(res.error);
@@ -120,6 +147,25 @@ export function PaymentSettingsForm({ settings }: Props) {
 
   return (
     <div className="bg-white rounded-xl border divide-y">
+      {/* Branding & SEO */}
+      <div className="px-5 py-4 space-y-4">
+        <div>
+          <h2 className="font-semibold text-sm">Branding & SEO Situs</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Logo, favicon, dan metadata default website utama.</p>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <BrandingUploader label="Logo" url={logoUrl} uploading={brandingUploading === "logo"} onFile={(f) => handleBrandingUpload("logo", f, setLogoUrl)} />
+          <BrandingUploader label="Favicon" url={faviconUrl} uploading={brandingUploading === "favicon"} onFile={(f) => handleBrandingUpload("favicon", f, setFaviconUrl)} />
+          <BrandingUploader label="OG Image" url={siteOgImageUrl} uploading={brandingUploading === "og"} onFile={(f) => handleBrandingUpload("og", f, setSiteOgImageUrl)} />
+        </div>
+        <Field label="SEO Title Situs">
+          <Input value={siteSeoTitle} onChange={(e) => setSiteSeoTitle(e.target.value)} placeholder="AsiaCommerce Event — Discover Our Events" />
+        </Field>
+        <Field label="SEO Description Situs">
+          <Textarea value={siteSeoDescription} onChange={(e) => setSiteSeoDescription(e.target.value)} rows={2} placeholder="Temukan dan ikuti event, workshop, dan webinar AsiaCommerce." />
+        </Field>
+      </div>
+
       <div className="px-5 py-4 flex items-center justify-between">
         <div>
           <h2 className="font-semibold text-sm">Metode Pembayaran</h2>
@@ -389,6 +435,47 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function BrandingUploader({
+  label,
+  url,
+  uploading,
+  onFile,
+}: {
+  label: string;
+  url: string | null;
+  uploading: boolean;
+  onFile: (file: File) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <label className="relative flex items-center justify-center h-20 rounded-lg border border-dashed bg-muted/40 cursor-pointer overflow-hidden hover:border-primary/50">
+        {uploading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        ) : url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={url} alt={label} className="max-h-16 max-w-full object-contain p-1" />
+        ) : (
+          <span className="flex flex-col items-center text-muted-foreground">
+            <Upload className="h-4 w-4" />
+            <span className="text-[10px] mt-0.5">Upload</span>
+          </span>
+        )}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/svg+xml,image/x-icon"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+            e.target.value = "";
+          }}
+        />
+      </label>
     </div>
   );
 }

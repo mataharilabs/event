@@ -25,8 +25,6 @@ const formSchema = z.object({
   googleMapsUrl: z.string().optional(),
   onlinePlatform: z.enum(["google_meet", "zoom", "microsoft_teams", "other"]).optional(),
   meetingUrl: z.string().optional(),
-  seoTitle: z.string().max(70).optional(),
-  seoDescription: z.string().max(160).optional(),
 }).refine((data) => new Date(data.endDatetime) > new Date(data.startDatetime), {
   message: "Waktu selesai harus setelah waktu mulai",
   path: ["endDatetime"],
@@ -77,8 +75,6 @@ export function EventForm({ event }: EventFormProps) {
           googleMapsUrl: event.googleMapsUrl ?? "",
           onlinePlatform: event.onlinePlatform ?? undefined,
           meetingUrl: event.meetingUrl ?? "",
-          seoTitle: event.seoTitle ?? "",
-          seoDescription: event.seoDescription ?? "",
         }
       : {
           timezone: "Asia/Jakarta",
@@ -120,8 +116,6 @@ export function EventForm({ event }: EventFormProps) {
         googleMapsUrl: data.googleMapsUrl || undefined,
         meetingUrl: data.meetingUrl || undefined,
         onlinePlatform: data.onlinePlatform || undefined,
-        seoTitle: data.seoTitle || undefined,
-        seoDescription: data.seoDescription || undefined,
       };
 
       if (event) {
@@ -365,22 +359,9 @@ export function EventForm({ event }: EventFormProps) {
         </section>
       )}
 
-      {/* SEO */}
-      <section className="space-y-4">
-        <h2 className="font-semibold text-base border-b pb-2">SEO (Opsional)</h2>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="seoTitle">SEO Title <span className="text-xs text-muted-foreground">(max 70)</span></Label>
-          <Input id="seoTitle" {...register("seoTitle")} maxLength={70} />
-          {errors.seoTitle && <p className="text-sm text-destructive">{errors.seoTitle.message}</p>}
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="seoDescription">SEO Description <span className="text-xs text-muted-foreground">(max 160)</span></Label>
-          <Textarea id="seoDescription" {...register("seoDescription")} rows={2} maxLength={160} />
-          {errors.seoDescription && <p className="text-sm text-destructive">{errors.seoDescription.message}</p>}
-        </div>
-      </section>
+      <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+        SEO & Open Graph (judul, deskripsi, OG image) otomatis diambil dari judul, deskripsi, dan gambar primary event — tidak perlu diisi manual.
+      </div>
 
       {submitError && (
         <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{submitError}</p>

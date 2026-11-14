@@ -41,6 +41,14 @@ export async function GET(
       quota: t.quota,
     }));
 
+  const fields = event.registrationFields.map((f) => ({
+    id: f.id,
+    label: f.label,
+    type: f.type,
+    required: f.required,
+    options: (f.optionsJson as string[] | null) ?? null,
+  }));
+
   return NextResponse.json({
     event: {
       id: event.id,
@@ -58,6 +66,7 @@ export async function GET(
       lifecycleStatus: event.lifecycleStatus,
     },
     tickets,
+    fields,
     viewer: {
       isAuthenticated: !!session?.user?.id,
       name: session?.user?.name ?? "",

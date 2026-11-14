@@ -64,6 +64,7 @@ export async function getEventBySlug(slug: string) {
     with: {
       eventImages: { orderBy: (img, ops) => [ops.asc(img.sortOrder)] },
       eventTickets: { where: (t, ops) => ops.eq(t.isActive, true) },
+      registrationFields: { orderBy: (f, ops) => [ops.asc(f.sortOrder)] },
     },
   });
 }

@@ -256,6 +256,58 @@ export async function deleteEvent(eventId: string) {
   return { success: true };
 }
 
+// Custom registration field actions
+export async function createRegistrationField(input: {
+  eventId: string;
+  label: string;
+  type: "text" | "textarea" | "number" | "dropdown";
+  required: boolean;
+  options?: string[];
+}) {
+  await requireAdmin();
+  const label = input.label.trim();
+  if (!label) return { success: false, error: "Label wajib diisi." };
+  if (input.type === "dropdown" && (!input.options || input.options.length === 0)) {
+    return { success: false, error: "Dropdown memerlukan minimal 1 pilihan." };
+  }
+
+  const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "field";
+  const fieldKey = `${slug}_${createId().slice(0, 6)}`;
+
+  const existingCount = (
+    await db.select({ id: registrationFields.id }).from(registrationFields).where(eq(registrationFields.eventId, input.eventId))
+  ).length;
+
+  await db.insert(registrationFields).values({
+    id: createId(),
+    eventId: input.eventId,
+    fieldKey,
+    label,
+    type: input.type,
+    required: input.required,
+    optionsJson: input.type === "dropdown" ? input.options : null,
+    sortOrder: existingCount,
+  });
+
+  revalidatePath(`/admin/events/${input.eventId}`);
+  return { success: true };
+}
+
+export async function deleteRegistrationField(fieldId: string) {
+  await requireAdmin();
+  const field = await db.query.registrationFields.findFirst({ where: eq(registrationFields.id, fieldId) });
+  if (!field) return { success: false, error: "Field tidak ditemukan." };
+
+  // Remove answers for this field first (FK without cascade), then the field.
+  await db.batch([
+    db.delete(registrationAnswers).where(eq(registrationAnswers.fieldId, fieldId)),
+    db.delete(registrationFields).where(eq(registrationFields.id, fieldId)),
+  ]);
+
+  revalidatePath(`/admin/events/${field.eventId}`);
+  return { success: true };
+}
+
 // Ticket actions
 export async function createTicket(input: CreateTicketInput) {
   await requireAdmin();

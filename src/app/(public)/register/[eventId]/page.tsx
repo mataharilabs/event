@@ -37,6 +37,7 @@ export default async function RegisterPage({ params }: PageProps) {
           where: (t, { eq: eqFn }) => eqFn(t.isActive, true),
           orderBy: (t, { asc }) => [asc(t.price)],
         },
+        registrationFields: { orderBy: (f, { asc }) => [asc(f.sortOrder)] },
       },
     }),
   ]);
@@ -103,6 +104,13 @@ export default async function RegisterPage({ params }: PageProps) {
           defaultName={session?.user?.name ?? ""}
           defaultEmail={session?.user?.email ?? ""}
           defaultPhone={""}
+          fields={event.registrationFields.map((f) => ({
+            id: f.id,
+            label: f.label,
+            type: f.type,
+            required: f.required,
+            options: (f.optionsJson as string[] | null) ?? null,
+          }))}
         />
       </div>
     </div>

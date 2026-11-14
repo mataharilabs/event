@@ -96,6 +96,7 @@ export async function getAdminEventDetail(eventId: string) {
     with: {
       eventTickets: { orderBy: (t, ops) => [ops.asc(t.createdAt)] },
       eventImages: { orderBy: (img, ops) => [ops.asc(img.sortOrder)] },
+      registrationFields: { orderBy: (f, ops) => [ops.asc(f.sortOrder)] },
     },
   });
   return event ?? null;
@@ -160,6 +161,7 @@ export async function getAdminRegistrationDetail(registrationId: string) {
       event: true,
       ticket: true,
       user: true,
+      answers: { with: { field: true } },
     },
   });
   if (!reg) return null;

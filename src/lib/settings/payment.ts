@@ -54,6 +54,11 @@ export interface AdminPaymentSettings {
   whatsappEnabled: boolean;
   whatsappApiUrl: string;
   hasWhatsappApiKey: boolean;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  siteSeoTitle: string;
+  siteSeoDescription: string;
+  siteOgImageUrl: string | null;
 }
 
 export async function getPaymentSettingsForAdmin(): Promise<AdminPaymentSettings> {
@@ -79,6 +84,31 @@ export async function getPaymentSettingsForAdmin(): Promise<AdminPaymentSettings
     whatsappEnabled: s.whatsappEnabled,
     whatsappApiUrl: s.whatsappApiUrl ?? "",
     hasWhatsappApiKey: !!s.whatsappApiKey,
+    logoUrl: s.logoUrl,
+    faviconUrl: s.faviconUrl,
+    siteSeoTitle: s.siteSeoTitle ?? "",
+    siteSeoDescription: s.siteSeoDescription ?? "",
+    siteOgImageUrl: s.siteOgImageUrl,
+  };
+}
+
+export interface SiteSettings {
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  ogImageUrl: string | null;
+}
+
+/** Public branding/SEO used by the header and site metadata. No secrets. */
+export async function getSiteSettings(): Promise<SiteSettings> {
+  const s = await getPaymentSettings().catch(() => null);
+  return {
+    logoUrl: s?.logoUrl ?? null,
+    faviconUrl: s?.faviconUrl ?? null,
+    seoTitle: s?.siteSeoTitle ?? null,
+    seoDescription: s?.siteSeoDescription ?? null,
+    ogImageUrl: s?.siteOgImageUrl ?? null,
   };
 }
 

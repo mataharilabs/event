@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   isLoggedIn?: boolean;
+  logoUrl?: string | null;
 }
 
-export function Header({ isLoggedIn = false }: HeaderProps) {
+export function Header({ isLoggedIn = false, logoUrl }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -17,7 +18,12 @@ export function Header({ isLoggedIn = false }: HeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 font-bold text-primary text-lg">
-            AsiaCommerce Event
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
+            ) : (
+              "AsiaCommerce Event"
+            )}
           </Link>
 
           {/* Desktop nav */}

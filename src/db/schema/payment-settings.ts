@@ -43,6 +43,13 @@ export const paymentSettings = pgTable("payment_settings", {
   whatsappApiUrl: text("whatsapp_api_url"),
   whatsappApiKey: text("whatsapp_api_key"),
 
+  // Site branding & default SEO/OG (for the main website)
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  siteSeoTitle: text("site_seo_title"),
+  siteSeoDescription: text("site_seo_description"),
+  siteOgImageUrl: text("site_og_image_url"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

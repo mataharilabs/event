@@ -44,8 +44,14 @@ export async function updatePaymentSettings(
     resendFromEmail: d.resendFromEmail ?? "",
     whatsappEnabled: d.whatsappEnabled,
     whatsappApiUrl: d.whatsappApiUrl ?? "",
+    siteSeoTitle: d.siteSeoTitle ?? "",
+    siteSeoDescription: d.siteSeoDescription ?? "",
     updatedAt: new Date(),
   };
+
+  if (d.logoUrl !== undefined) update.logoUrl = d.logoUrl || null;
+  if (d.faviconUrl !== undefined) update.faviconUrl = d.faviconUrl || null;
+  if (d.siteOgImageUrl !== undefined) update.siteOgImageUrl = d.siteOgImageUrl || null;
 
   if (d.xenditSecretKey !== undefined) update.xenditSecretKey = d.xenditSecretKey || null;
   if (d.xenditWebhookToken !== undefined) update.xenditWebhookToken = d.xenditWebhookToken || null;
@@ -96,5 +102,34 @@ export async function uploadQrisImage(
   } catch (err) {
     console.error("[settings] QRIS upload failed:", err);
     return { success: false, error: "Gagal mengunggah gambar QRIS." };
+  }
+}
+
+const ALLOWED_BRANDING_MIME = [...ALLOWED_MIME, "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon"];
+
+/** Upload a branding asset (logo/favicon/OG image) and return its public URL. */
+export async function uploadBrandingImage(
+  formData: FormData
+): Promise<{ success: true; url: string } | { success: false; error: string }> {
+  await requireAdmin();
+
+  const file = formData.get("file");
+  const kind = (formData.get("kind") as string) || "asset";
+  if (!(file instanceof File)) return { success: false, error: "File tidak ditemukan." };
+  if (!ALLOWED_BRANDING_MIME.includes(file.type)) {
+    return { success: false, error: "Format tidak didukung (JPG, PNG, WebP, SVG, ICO)." };
+  }
+  if (file.size > MAX_BYTES) return { success: false, error: "Ukuran file maksimum 5 MB." };
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return { success: false, error: "Storage belum dikonfigurasi (BLOB_READ_WRITE_TOKEN)." };
+  }
+
+  const ext = (file.name.split(".").pop() || "png").toLowerCase().replace(/[^a-z0-9]/g, "");
+  try {
+    const blob = await put(`settings/${kind}-${Date.now()}.${ext}`, file, { access: "public" });
+    return { success: true, url: blob.url };
+  } catch (err) {
+    console.error("[settings] branding upload failed:", err);
+    return { success: false, error: "Gagal mengunggah gambar." };
   }
 }

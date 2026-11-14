@@ -30,6 +30,12 @@ export const updatePaymentSettingsSchema = z.object({
   whatsappEnabled: z.boolean(),
   whatsappApiUrl: z.string().max(300).optional(),
   whatsappApiKey: z.string().optional(),
+
+  logoUrl: z.string().optional(),
+  faviconUrl: z.string().optional(),
+  siteSeoTitle: z.string().max(200).optional(),
+  siteSeoDescription: z.string().max(400).optional(),
+  siteOgImageUrl: z.string().optional(),
 });
 
 export type UpdatePaymentSettingsInput = z.infer<typeof updatePaymentSettingsSchema>;

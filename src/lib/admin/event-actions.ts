@@ -293,6 +293,61 @@ export async function createRegistrationField(input: {
   return { success: true };
 }
 
+export async function updateRegistrationField(
+  fieldId: string,
+  input: { label: string; type: "text" | "textarea" | "number" | "dropdown"; required: boolean; options?: string[] }
+) {
+  await requireAdmin();
+  const field = await db.query.registrationFields.findFirst({ where: eq(registrationFields.id, fieldId) });
+  if (!field) return { success: false, error: "Field tidak ditemukan." };
+
+  const label = input.label.trim();
+  if (!label) return { success: false, error: "Label wajib diisi." };
+  if (input.type === "dropdown" && (!input.options || input.options.length === 0)) {
+    return { success: false, error: "Dropdown memerlukan minimal 1 pilihan." };
+  }
+
+  await db
+    .update(registrationFields)
+    .set({
+      label,
+      type: input.type,
+      required: input.required,
+      optionsJson: input.type === "dropdown" ? input.options : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(registrationFields.id, fieldId));
+
+  revalidatePath(`/admin/events/${field.eventId}`);
+  return { success: true };
+}
+
+export async function moveRegistrationField(fieldId: string, direction: "up" | "down") {
+  await requireAdmin();
+  const field = await db.query.registrationFields.findFirst({ where: eq(registrationFields.id, fieldId) });
+  if (!field) return { success: false, error: "Field tidak ditemukan." };
+
+  const siblings = await db
+    .select({ id: registrationFields.id, sortOrder: registrationFields.sortOrder })
+    .from(registrationFields)
+    .where(eq(registrationFields.eventId, field.eventId))
+    .orderBy(registrationFields.sortOrder);
+
+  const idx = siblings.findIndex((s) => s.id === fieldId);
+  const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (idx === -1 || swapIdx < 0 || swapIdx >= siblings.length) return { success: true };
+
+  const a = siblings[idx];
+  const b = siblings[swapIdx];
+  await db.batch([
+    db.update(registrationFields).set({ sortOrder: b.sortOrder }).where(eq(registrationFields.id, a.id)),
+    db.update(registrationFields).set({ sortOrder: a.sortOrder }).where(eq(registrationFields.id, b.id)),
+  ]);
+
+  revalidatePath(`/admin/events/${field.eventId}`);
+  return { success: true };
+}
+
 export async function deleteRegistrationField(fieldId: string) {
   await requireAdmin();
   const field = await db.query.registrationFields.findFirst({ where: eq(registrationFields.id, fieldId) });

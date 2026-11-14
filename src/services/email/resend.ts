@@ -1,14 +1,18 @@
 import type { EmailService, SendEmailParams } from "./types";
 
+export interface ResendConfig {
+  apiKey: string;
+  from: string;
+}
+
 export class ResendEmailService implements EmailService {
   private readonly apiKey: string;
   private readonly from: string;
 
-  constructor() {
-    const key = process.env.EMAIL_API_KEY;
-    if (!key) throw new Error("EMAIL_API_KEY not configured");
-    this.apiKey = key;
-    this.from = process.env.EMAIL_FROM ?? "noreply@asiacommerce.net";
+  constructor(config: ResendConfig) {
+    if (!config.apiKey) throw new Error("Resend API key not configured");
+    this.apiKey = config.apiKey;
+    this.from = config.from || "AsiaCommerce Event <noreply@asiacommerce.net>";
   }
 
   async sendEmail(params: SendEmailParams): Promise<{ messageId: string }> {
@@ -37,6 +41,18 @@ export class ResendEmailService implements EmailService {
   }
 }
 
-export function getEmailService(): EmailService {
-  return new ResendEmailService();
+/**
+ * Build a Resend service from admin-configured settings (fallback to env).
+ * Returns null if email is disabled or no API key is set.
+ */
+export async function getEmailService(): Promise<EmailService | null> {
+  const { getPaymentSettings } = await import("@/lib/settings/payment");
+  const s = await getPaymentSettings();
+
+  if (!s.emailEnabled) return null;
+  const apiKey = s.resendApiKey || process.env.EMAIL_API_KEY || "";
+  const from = s.resendFromEmail || process.env.EMAIL_FROM || "AsiaCommerce Event <noreply@asiacommerce.net>";
+  if (!apiKey) return null;
+
+  return new ResendEmailService({ apiKey, from });
 }

@@ -46,12 +46,6 @@ export async function createRegistration(input: {
     return { success: false, error: "Penjualan tiket sudah berakhir." };
   }
 
-  // Paid tickets require an account (needed for the payment flow & tracking).
-  // Free tickets allow guest registration.
-  if (ticket.price > 0 && !userId) {
-    return { success: false, error: "Silakan login terlebih dahulu untuk mendaftar tiket berbayar." };
-  }
-
   // Check duplicate (allow re-register if previous was cancelled).
   // A participant is identified by their account when logged in, otherwise by
   // the email they register with.
@@ -111,10 +105,81 @@ export async function createRegistration(input: {
     return { success: false, error: "Gagal membuat registrasi." };
   }
 
+  // Send confirmation (free) or payment link (paid) via email + WhatsApp.
+  // Awaited so the external calls complete before the serverless function ends;
+  // internally resilient (never throws, skips disabled channels).
+  await fireRegistrationNotification({
+    reg,
+    event,
+    ticket,
+    userId,
+    isFree,
+  }).catch((err) => console.error("Registration notification error:", err));
+
   return {
     success: true,
     registrationId: reg.id,
     registrationCode: reg.registrationCode,
     isFree,
   };
+}
+
+async function fireRegistrationNotification(args: {
+  reg: { id: string; registrationCode: string; name: string; email: string; phone: string };
+  event: { id: string; title: string; slug: string; startDatetime: Date; timezone: string; venueName: string | null; attendanceMode: string };
+  ticket: { name: string; price: number };
+  userId: string | null;
+  isFree: boolean;
+}) {
+  const { reg, event, ticket, userId, isFree } = args;
+  const { sendNotification } = await import("@/services/notification");
+  const {
+    registrationConfirmationEmail,
+    registrationConfirmationWhatsApp,
+    paymentPendingEmail,
+    paymentPendingWhatsApp,
+  } = await import("@/services/notification/templates");
+  const { APP_URL } = await import("@/config");
+
+  const base = {
+    registrationCode: reg.registrationCode,
+    name: reg.name,
+    eventTitle: event.title,
+    ticketName: ticket.name,
+    ticketPrice: ticket.price,
+    startDatetime: event.startDatetime,
+    timezone: event.timezone,
+    venueName: event.venueName,
+    attendanceMode: event.attendanceMode,
+  };
+
+  let email: { to: string; subject: string; html: string; text?: string };
+  let whatsapp: { to: string; message: string };
+
+  if (isFree) {
+    email = { to: reg.email, ...registrationConfirmationEmail(base) };
+    whatsapp = { to: reg.phone, message: registrationConfirmationWhatsApp(base) };
+  } else {
+    const paymentUrl = `${APP_URL}/payment/${reg.id}`;
+    email = { to: reg.email, ...paymentPendingEmail({ ...base, amount: ticket.price, paymentUrl }) };
+    whatsapp = {
+      to: reg.phone,
+      message: paymentPendingWhatsApp({
+        name: reg.name,
+        eventTitle: event.title,
+        registrationCode: reg.registrationCode,
+        amount: ticket.price,
+        paymentUrl,
+      }),
+    };
+  }
+
+  await sendNotification({
+    registrationId: reg.id,
+    eventId: event.id,
+    userId,
+    type: "registration_confirmation",
+    email,
+    whatsapp,
+  });
 }

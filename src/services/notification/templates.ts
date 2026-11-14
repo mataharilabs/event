@@ -90,6 +90,51 @@ export function paymentConfirmationEmail(data: RegistrationData & { amount: numb
   return { subject, html, text };
 }
 
+export function paymentPendingEmail(
+  data: RegistrationData & { amount: number; paymentUrl: string }
+) {
+  const subject = `Selesaikan Pembayaran: ${data.eventTitle}`;
+  const dateStr = `${formatDate(data.startDatetime, data.timezone)}, ${formatTime(data.startDatetime, data.timezone)}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
+  <div style="background: #f59e0b; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 22px;">Selesaikan Pembayaran 💳</h1>
+  </div>
+  <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+    <p>Halo <strong>${data.name}</strong>,</p>
+    <p>Terima kasih sudah mendaftar <strong>${data.eventTitle}</strong>. Registrasimu belum aktif sampai pembayaran selesai.</p>
+
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr><td style="padding: 6px 0; color: #64748b; width: 40%;">Kode Registrasi</td><td style="padding: 6px 0; font-weight: bold; font-family: monospace;">${data.registrationCode}</td></tr>
+        <tr><td style="padding: 6px 0; color: #64748b;">Tiket</td><td style="padding: 6px 0;">${data.ticketName}</td></tr>
+        <tr><td style="padding: 6px 0; color: #64748b;">Waktu</td><td style="padding: 6px 0;">${dateStr}</td></tr>
+        <tr><td style="padding: 6px 0; color: #64748b;">Total</td><td style="padding: 6px 0; font-weight: bold; color: #f59e0b;">${formatCurrency(data.amount)}</td></tr>
+      </table>
+    </div>
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${data.paymentUrl}" style="display: inline-block; background: #f59e0b; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: bold;">Bayar Sekarang</a>
+    </div>
+    <p style="color: #64748b; font-size: 13px; text-align: center;">Atau buka link ini kapan saja:<br><a href="${data.paymentUrl}">${data.paymentUrl}</a></p>
+  </div>
+</body>
+</html>`;
+
+  const text = `Selesaikan Pembayaran\n\nHalo ${data.name},\n\nRegistrasi: ${data.registrationCode}\nEvent: ${data.eventTitle}\nTotal: ${formatCurrency(data.amount)}\n\nBayar di sini kapan saja:\n${data.paymentUrl}`;
+
+  return { subject, html, text };
+}
+
+export function paymentPendingWhatsApp(
+  data: Pick<RegistrationData, "name" | "eventTitle" | "registrationCode"> & { amount: number; paymentUrl: string }
+) {
+  return `Halo ${data.name} 👋\n\n💳 *Selesaikan Pembayaran*\n\nTerima kasih sudah mendaftar *${data.eventTitle}*.\n\n🎫 Kode: *${data.registrationCode}*\n💰 Total: *${formatCurrency(data.amount)}*\n\nBayar kapan saja lewat link ini:\n${data.paymentUrl}\n\n_AsiaCommerce Event_`;
+}
+
 export function registrationConfirmationWhatsApp(data: Pick<RegistrationData, "name" | "registrationCode" | "eventTitle" | "startDatetime" | "timezone">) {
   const dateStr = `${formatDate(data.startDatetime, data.timezone)}, ${formatTime(data.startDatetime, data.timezone)}`;
   return `Halo ${data.name} 👋\n\n✅ *Pendaftaran Berhasil!*\n\n📌 *${data.eventTitle}*\n📅 ${dateStr}\n🎫 Kode: *${data.registrationCode}*\n\nSimpan kode ini untuk check-in ya!\n\n_AsiaCommerce Event_`;

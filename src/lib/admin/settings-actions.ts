@@ -40,6 +40,10 @@ export async function updatePaymentSettings(
     bankAccountHolder: d.bankAccountHolder ?? "",
     bankInstructions: d.bankInstructions ?? "",
     qrisEnabled: d.qrisEnabled,
+    emailEnabled: d.emailEnabled,
+    resendFromEmail: d.resendFromEmail ?? "",
+    whatsappEnabled: d.whatsappEnabled,
+    whatsappApiUrl: d.whatsappApiUrl ?? "",
     updatedAt: new Date(),
   };
 
@@ -48,6 +52,8 @@ export async function updatePaymentSettings(
   if (d.midtransServerKey !== undefined) update.midtransServerKey = d.midtransServerKey || null;
   if (d.midtransClientKey !== undefined) update.midtransClientKey = d.midtransClientKey || null;
   if (d.qrisImageUrl !== undefined && d.qrisImageUrl !== "") update.qrisImageUrl = d.qrisImageUrl;
+  if (d.resendApiKey !== undefined) update.resendApiKey = d.resendApiKey || null;
+  if (d.whatsappApiKey !== undefined) update.whatsappApiKey = d.whatsappApiKey || null;
 
   await db.update(paymentSettings).set(update).where(eq(paymentSettings.id, SETTINGS_ID));
 

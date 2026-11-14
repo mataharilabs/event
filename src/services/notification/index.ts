@@ -3,6 +3,8 @@ import { notifications } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createId } from "@/lib/id";
 import type { NotificationType } from "@/types";
+import type { EmailService } from "@/services/email/types";
+import type { WhatsAppService } from "@/services/whatsapp/types";
 
 interface SendNotificationParams {
   registrationId: string;
@@ -14,12 +16,11 @@ interface SendNotificationParams {
 }
 
 async function sendEmailNotif(
+  svc: EmailService,
   notifId: string,
   email: { to: string; subject: string; html: string; text?: string }
 ) {
   try {
-    const { getEmailService } = await import("@/services/email/resend");
-    const svc = getEmailService();
     const result = await svc.sendEmail(email);
     await db
       .update(notifications)
@@ -33,10 +34,12 @@ async function sendEmailNotif(
   }
 }
 
-async function sendWhatsAppNotif(notifId: string, wa: { to: string; message: string }) {
+async function sendWhatsAppNotif(
+  svc: WhatsAppService,
+  notifId: string,
+  wa: { to: string; message: string }
+) {
   try {
-    const { getWhatsAppService } = await import("@/services/whatsapp/provider");
-    const svc = getWhatsAppService();
     const result = await svc.sendMessage({ to: wa.to, message: wa.message });
     await db
       .update(notifications)
@@ -52,26 +55,34 @@ async function sendWhatsAppNotif(notifId: string, wa: { to: string; message: str
 
 export async function sendNotification(params: SendNotificationParams) {
   const { registrationId, eventId, userId, type } = params;
+
+  const { getEmailService } = await import("@/services/email/resend");
+  const { getWhatsAppService } = await import("@/services/whatsapp/provider");
+  const [emailSvc, waSvc] = await Promise.all([
+    getEmailService().catch(() => null),
+    getWhatsAppService().catch(() => null),
+  ]);
+
   const tasks: Array<Promise<void>> = [];
 
-  if (params.email) {
+  if (params.email && emailSvc) {
     const notifId = createId();
     await db.insert(notifications).values({
       id: notifId, registrationId, eventId, userId,
       channel: "email", type, status: "pending",
     });
-    tasks.push(sendEmailNotif(notifId, params.email));
+    tasks.push(sendEmailNotif(emailSvc, notifId, params.email));
   }
 
-  if (params.whatsapp) {
+  if (params.whatsapp && waSvc) {
     const notifId = createId();
     await db.insert(notifications).values({
       id: notifId, registrationId, eventId, userId,
       channel: "whatsapp", type, status: "pending",
     });
-    tasks.push(sendWhatsAppNotif(notifId, params.whatsapp));
+    tasks.push(sendWhatsAppNotif(waSvc, notifId, params.whatsapp));
   }
 
-  // Failures must not break caller
+  // Failures must not break the caller.
   await Promise.allSettled(tasks);
 }

@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/db";
 import { registrations } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth";
 import { formatCurrency } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { PaymentOptions } from "./payment-options";
@@ -21,22 +20,18 @@ interface PageProps {
 }
 
 export default async function PaymentPage({ params, searchParams }: PageProps) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    const { registrationId } = await params;
-    redirect(`/login?callbackUrl=/payment/${registrationId}`);
-  }
-
   const { registrationId } = await params;
   const { status } = await searchParams;
 
+  // Accessible without login — the random registrationId acts as a capability
+  // token (magic link), so guests can return to pay anytime via the link sent
+  // to their email/WhatsApp.
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
     with: { event: true, ticket: true },
   }).catch(() => null);
 
   if (!reg) notFound();
-  if (reg.userId !== session.user.id) notFound();
 
   // Already confirmed
   if (reg.status === "confirmed") {

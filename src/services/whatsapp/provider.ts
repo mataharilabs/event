@@ -1,57 +1,70 @@
 import type { WhatsAppService, SendWhatsAppParams } from "./types";
 
+export interface WhatsAppConfig {
+  apiUrl: string;
+  apiKey: string;
+}
+
+/** Normalize an Indonesian phone to international digits (62…) for the gateway. */
+function normalizePhone(phone: string): string {
+  let p = phone.replace(/[^\d+]/g, "");
+  if (p.startsWith("+")) p = p.slice(1);
+  if (p.startsWith("0")) p = "62" + p.slice(1);
+  if (p.startsWith("8")) p = "62" + p;
+  return p;
+}
+
+/**
+ * Internal wa-gateway (https://github.com/mataharilabs/wa-gateway):
+ * POST {baseUrl}/send  —  Authorization: Bearer <key>  —  body { to, message }
+ */
 export class WhatsAppApiService implements WhatsAppService {
   private readonly apiKey: string;
   private readonly apiUrl: string;
 
-  constructor() {
-    const key = process.env.WHATSAPP_API_KEY;
-    const url = process.env.WHATSAPP_API_URL;
-    if (!key || !url) throw new Error("WhatsApp API credentials not configured");
-    this.apiKey = key;
-    this.apiUrl = url.replace(/\/$/, "");
+  constructor(config: WhatsAppConfig) {
+    if (!config.apiKey || !config.apiUrl) {
+      throw new Error("WhatsApp gateway not configured");
+    }
+    this.apiKey = config.apiKey;
+    this.apiUrl = config.apiUrl.replace(/\/$/, "");
   }
 
   async sendMessage(params: SendWhatsAppParams): Promise<{ messageId: string }> {
-    // Generic WhatsApp HTTP API format (compatible with most providers)
-    const body = params.templateName
-      ? {
-          to: params.to,
-          type: "template",
-          template: {
-            name: params.templateName,
-            language: { code: "id" },
-            components: params.templateParams
-              ? [{ type: "body", parameters: Object.values(params.templateParams).map((v) => ({ type: "text", text: v })) }]
-              : [],
-          },
-        }
-      : {
-          to: params.to,
-          type: "text",
-          text: { body: params.message },
-        };
-
-    const response = await fetch(`${this.apiUrl}/messages`, {
+    const response = await fetch(`${this.apiUrl}/send`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        to: normalizePhone(params.to),
+        message: params.message,
+      }),
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(`WhatsApp send failed: ${JSON.stringify(err)}`);
+      const err = await response.text().catch(() => "");
+      throw new Error(`WhatsApp send failed: ${response.status} ${err}`);
     }
 
-    const data = (await response.json()) as { messages?: Array<{ id: string }>; id?: string };
-    const messageId = data.messages?.[0]?.id ?? data.id ?? "unknown";
-    return { messageId };
+    const data = (await response.json().catch(() => ({}))) as { id?: string; messageId?: string };
+    return { messageId: data.messageId ?? data.id ?? "sent" };
   }
 }
 
-export function getWhatsAppService(): WhatsAppService {
-  return new WhatsAppApiService();
+/**
+ * Build a WhatsApp service from admin-configured settings (fallback to env).
+ * Returns null if WhatsApp is disabled or not configured.
+ */
+export async function getWhatsAppService(): Promise<WhatsAppService | null> {
+  const { getPaymentSettings } = await import("@/lib/settings/payment");
+  const s = await getPaymentSettings();
+
+  if (!s.whatsappEnabled) return null;
+  const apiUrl = s.whatsappApiUrl || process.env.WHATSAPP_API_URL || "";
+  const apiKey = s.whatsappApiKey || process.env.WHATSAPP_API_KEY || "";
+  if (!apiUrl || !apiKey) return null;
+
+  return new WhatsAppApiService({ apiUrl, apiKey });
 }

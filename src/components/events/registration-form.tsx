@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,6 @@ export function RegistrationForm({
   const [success, setSuccess] = useState<SuccessState | null>(null);
 
   const selectedTicket = tickets.find((t) => t.id === selectedTicketId);
-  const needsLogin = !isAuthenticated && !!selectedTicket && selectedTicket.price > 0;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -230,29 +228,18 @@ export function RegistrationForm({
         <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</p>
       )}
 
-      {needsLogin ? (
-        <div className="space-y-2">
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            Tiket berbayar memerlukan akun. Silakan login untuk melanjutkan.
-          </p>
-          <Button asChild type="button" className="w-full" size="lg">
-            <Link href={`/login?callbackUrl=/register/${eventId}`}>Login untuk Lanjut</Link>
-          </Button>
-        </div>
-      ) : (
-        <Button
-          type="submit"
-          className="w-full"
-          size="lg"
-          disabled={isPending || tickets.length === 0}
-        >
-          {isPending
-            ? "Mendaftar..."
-            : selectedTicket?.price === 0
-            ? "Daftar Gratis"
-            : `Daftar — ${selectedTicket ? formatCurrency(selectedTicket.price) : ""}`}
-        </Button>
-      )}
+      <Button
+        type="submit"
+        className="w-full"
+        size="lg"
+        disabled={isPending || tickets.length === 0}
+      >
+        {isPending
+          ? "Mendaftar..."
+          : selectedTicket?.price === 0
+          ? "Daftar Gratis"
+          : `Lanjut Bayar — ${selectedTicket ? formatCurrency(selectedTicket.price) : ""}`}
+      </Button>
 
       <p className="text-xs text-muted-foreground text-center">
         Dengan mendaftar, kamu menyetujui ketentuan event ini.

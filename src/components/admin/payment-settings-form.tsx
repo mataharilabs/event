@@ -12,7 +12,7 @@ import {
   uploadQrisImage,
 } from "@/lib/admin/settings-actions";
 import type { AdminPaymentSettings } from "@/lib/settings/payment";
-import { CreditCard, Building2, QrCode, Zap, Loader2, CheckCircle2, Upload } from "lucide-react";
+import { CreditCard, Building2, QrCode, Zap, Loader2, CheckCircle2, Upload, Mail, MessageCircle } from "lucide-react";
 
 interface Props {
   settings: AdminPaymentSettings;
@@ -39,11 +39,18 @@ export function PaymentSettingsForm({ settings }: Props) {
   const [bankInstructions, setBankInstructions] = useState(settings.bankInstructions);
   const [qrisImageUrl, setQrisImageUrl] = useState<string | null>(settings.qrisImageUrl);
 
+  const [emailEnabled, setEmailEnabled] = useState(settings.emailEnabled);
+  const [resendFromEmail, setResendFromEmail] = useState(settings.resendFromEmail);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(settings.whatsappEnabled);
+  const [whatsappApiUrl, setWhatsappApiUrl] = useState(settings.whatsappApiUrl);
+
   // Secret inputs — empty means "keep stored value"
   const [xenditSecretKey, setXenditSecretKey] = useState("");
   const [xenditWebhookToken, setXenditWebhookToken] = useState("");
   const [midtransServerKey, setMidtransServerKey] = useState("");
   const [midtransClientKey, setMidtransClientKey] = useState("");
+  const [resendApiKey, setResendApiKey] = useState("");
+  const [whatsappApiKey, setWhatsappApiKey] = useState("");
 
   function secretPlaceholder(stored: boolean) {
     return stored ? "•••••••••• (tersimpan — isi untuk mengganti)" : "Belum diisi";
@@ -88,6 +95,12 @@ export function PaymentSettingsForm({ settings }: Props) {
         bankInstructions,
         qrisEnabled,
         qrisImageUrl: qrisImageUrl ?? undefined,
+        emailEnabled,
+        resendApiKey: resendApiKey || undefined,
+        resendFromEmail,
+        whatsappEnabled,
+        whatsappApiUrl,
+        whatsappApiKey: whatsappApiKey || undefined,
       });
       if (!res.success) {
         setError(res.error);
@@ -98,6 +111,8 @@ export function PaymentSettingsForm({ settings }: Props) {
       setXenditWebhookToken("");
       setMidtransServerKey("");
       setMidtransClientKey("");
+      setResendApiKey("");
+      setWhatsappApiKey("");
       router.refresh();
       setTimeout(() => setSaved(false), 2500);
     });
@@ -249,6 +264,58 @@ export function PaymentSettingsForm({ settings }: Props) {
             <p className="text-xs text-muted-foreground">JPG, PNG, WebP — maks. 5 MB</p>
           </div>
         </div>
+      </Section>
+
+      {/* Email (Resend) */}
+      <Section
+        icon={<Mail className="h-4 w-4 text-rose-600" />}
+        title="Notifikasi Email (Resend)"
+        subtitle="Kirim konfirmasi & link pembayaran via email"
+        enabled={emailEnabled}
+        onToggle={setEmailEnabled}
+      >
+        <Field label="Resend API Key">
+          <Input
+            type="password"
+            autoComplete="off"
+            value={resendApiKey}
+            onChange={(e) => setResendApiKey(e.target.value)}
+            placeholder={secretPlaceholder(settings.hasResendApiKey)}
+          />
+        </Field>
+        <Field label="Email Pengirim (From)">
+          <Input
+            value={resendFromEmail}
+            onChange={(e) => setResendFromEmail(e.target.value)}
+            placeholder="AsiaCommerce Event <noreply@event.asiacommerce.net>"
+          />
+        </Field>
+      </Section>
+
+      {/* WhatsApp (wa-gateway) */}
+      <Section
+        icon={<MessageCircle className="h-4 w-4 text-green-600" />}
+        title="Notifikasi WhatsApp (wa-gateway)"
+        subtitle="Kirim konfirmasi & link pembayaran via WhatsApp internal"
+        enabled={whatsappEnabled}
+        onToggle={setWhatsappEnabled}
+      >
+        <Field label="Gateway URL">
+          <Input
+            value={whatsappApiUrl}
+            onChange={(e) => setWhatsappApiUrl(e.target.value)}
+            placeholder="https://wa-gateway.example.com"
+          />
+        </Field>
+        <Field label="Gateway API Key">
+          <Input
+            type="password"
+            autoComplete="off"
+            value={whatsappApiKey}
+            onChange={(e) => setWhatsappApiKey(e.target.value)}
+            placeholder={secretPlaceholder(settings.hasWhatsappApiKey)}
+          />
+        </Field>
       </Section>
 
       {/* Save */}

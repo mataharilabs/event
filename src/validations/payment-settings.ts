@@ -22,6 +22,14 @@ export const updatePaymentSettingsSchema = z.object({
 
   qrisEnabled: z.boolean(),
   qrisImageUrl: z.string().url().optional().or(z.literal("")),
+
+  emailEnabled: z.boolean(),
+  resendApiKey: z.string().optional(),
+  resendFromEmail: z.string().max(200).optional(),
+
+  whatsappEnabled: z.boolean(),
+  whatsappApiUrl: z.string().max(300).optional(),
+  whatsappApiKey: z.string().optional(),
 });
 
 export type UpdatePaymentSettingsInput = z.infer<typeof updatePaymentSettingsSchema>;

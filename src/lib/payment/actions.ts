@@ -4,23 +4,17 @@ import { db } from "@/db";
 import { registrations, payments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createId } from "@/lib/id";
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import type { PaymentProvider } from "@/types";
 
 export async function initiateXenditPayment(registrationId: string): Promise<
   { success: true; invoiceUrl: string } | { success: false; error: string }
 > {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
     with: { ticket: true, event: true },
   });
 
   if (!reg) return { success: false, error: "Registrasi tidak ditemukan." };
-  if (reg.userId !== session.user.id) return { success: false, error: "Akses tidak diizinkan." };
   if (reg.status === "confirmed") return { success: false, error: "Registrasi sudah dikonfirmasi." };
 
   // Check if active payment already exists
@@ -72,16 +66,12 @@ export async function initiateXenditPayment(registrationId: string): Promise<
 export async function initiateMidtransPayment(registrationId: string): Promise<
   { success: true; invoiceUrl: string } | { success: false; error: string }
 > {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
     with: { ticket: true, event: true },
   });
 
   if (!reg) return { success: false, error: "Registrasi tidak ditemukan." };
-  if (reg.userId !== session.user.id) return { success: false, error: "Akses tidak diizinkan." };
   if (reg.status === "confirmed") return { success: false, error: "Registrasi sudah dikonfirmasi." };
 
   const existingPayment = await db.query.payments.findFirst({
@@ -132,16 +122,12 @@ export async function initiateManualPayment(
   registrationId: string,
   provider: Extract<PaymentProvider, "manual" | "qris">
 ): Promise<{ success: true } | { success: false; error: string }> {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
     with: { ticket: true },
   });
 
   if (!reg) return { success: false, error: "Registrasi tidak ditemukan." };
-  if (reg.userId !== session.user.id) return { success: false, error: "Akses tidak diizinkan." };
 
   const existing = await db.query.payments.findFirst({
     where: eq(payments.registrationId, registrationId),
@@ -169,15 +155,12 @@ export async function uploadPaymentProof(
   registrationId: string,
   proofUrl: string
 ): Promise<{ success: boolean; error?: string }> {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
   const reg = await db.query.registrations.findFirst({
     where: eq(registrations.id, registrationId),
   });
 
-  if (!reg || reg.userId !== session.user.id) {
-    return { success: false, error: "Akses tidak diizinkan." };
+  if (!reg) {
+    return { success: false, error: "Registrasi tidak ditemukan." };
   }
 
   const payment = await db.query.payments.findFirst({

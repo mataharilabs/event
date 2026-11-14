@@ -33,6 +33,16 @@ export const paymentSettings = pgTable("payment_settings", {
   qrisEnabled: boolean("qris_enabled").notNull().default(false),
   qrisImageUrl: text("qris_image_url"),
 
+  // Email notifications (Resend)
+  emailEnabled: boolean("email_enabled").notNull().default(false),
+  resendApiKey: text("resend_api_key"),
+  resendFromEmail: text("resend_from_email"),
+
+  // WhatsApp notifications (internal wa-gateway: POST /send { to, message })
+  whatsappEnabled: boolean("whatsapp_enabled").notNull().default(false),
+  whatsappApiUrl: text("whatsapp_api_url"),
+  whatsappApiKey: text("whatsapp_api_key"),
+
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

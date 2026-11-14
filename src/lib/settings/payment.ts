@@ -48,6 +48,12 @@ export interface AdminPaymentSettings {
   bankInstructions: string;
   qrisEnabled: boolean;
   qrisImageUrl: string | null;
+  emailEnabled: boolean;
+  hasResendApiKey: boolean;
+  resendFromEmail: string;
+  whatsappEnabled: boolean;
+  whatsappApiUrl: string;
+  hasWhatsappApiKey: boolean;
 }
 
 export async function getPaymentSettingsForAdmin(): Promise<AdminPaymentSettings> {
@@ -67,6 +73,12 @@ export async function getPaymentSettingsForAdmin(): Promise<AdminPaymentSettings
     bankInstructions: s.bankInstructions ?? "",
     qrisEnabled: s.qrisEnabled,
     qrisImageUrl: s.qrisImageUrl,
+    emailEnabled: s.emailEnabled,
+    hasResendApiKey: !!s.resendApiKey,
+    resendFromEmail: s.resendFromEmail ?? "",
+    whatsappEnabled: s.whatsappEnabled,
+    whatsappApiUrl: s.whatsappApiUrl ?? "",
+    hasWhatsappApiKey: !!s.whatsappApiKey,
   };
 }
 

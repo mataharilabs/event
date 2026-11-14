@@ -1,8 +1,19 @@
 "use server";
 
 import { db } from "@/db";
-import { events, eventTickets, eventImages, auditLogs } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import {
+  events,
+  eventTickets,
+  eventImages,
+  auditLogs,
+  registrations,
+  payments,
+  registrationAnswers,
+  registrationFields,
+  notifications,
+  shortLinks,
+} from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { createId, createShortCode } from "@/lib/id";
 import { generateSlug, generateUniqueSlug } from "@/lib/events/slug";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -207,6 +218,42 @@ export async function duplicateEvent(eventId: string) {
   revalidatePath("/admin/events");
 
   return { success: true, eventId: newEventId };
+}
+
+/**
+ * Hard-delete an event and ALL its related data (tickets, images, fields,
+ * short links, registrations, answers, payments, notifications; analytics
+ * cascade automatically). Destructive — the UI must confirm. Prefer archive
+ * for events with real history.
+ */
+export async function deleteEvent(eventId: string) {
+  const admin = await requireAdmin();
+
+  const event = await db.query.events.findFirst({ where: eq(events.id, eventId) });
+  if (!event) return { success: false, error: "Event tidak ditemukan." };
+
+  const regIds = db
+    .select({ id: registrations.id })
+    .from(registrations)
+    .where(eq(registrations.eventId, eventId));
+
+  // Children before parents (FKs are checked per statement in the batch).
+  await db.batch([
+    db.delete(payments).where(inArray(payments.registrationId, regIds)),
+    db.delete(registrationAnswers).where(inArray(registrationAnswers.registrationId, regIds)),
+    db.delete(notifications).where(eq(notifications.eventId, eventId)),
+    db.delete(registrations).where(eq(registrations.eventId, eventId)),
+    db.delete(eventTickets).where(eq(eventTickets.eventId, eventId)),
+    db.delete(eventImages).where(eq(eventImages.eventId, eventId)),
+    db.delete(registrationFields).where(eq(registrationFields.eventId, eventId)),
+    db.delete(shortLinks).where(eq(shortLinks.eventId, eventId)),
+    db.delete(events).where(eq(events.id, eventId)),
+  ]);
+
+  console.warn(`[events] event ${eventId} (${event.slug}) hard-deleted by admin ${admin.id}`);
+  revalidatePath("/admin/events");
+  revalidatePublicEventPaths(event.slug);
+  return { success: true };
 }
 
 // Ticket actions

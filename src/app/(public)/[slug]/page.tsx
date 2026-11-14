@@ -1,4 +1,5 @@
 import { notFound, permanentRedirect } from "next/navigation";
+import { after } from "next/server";
 import Image from "next/image";
 import Link from "next/link";
 import { Calendar, Clock, MapPin, ExternalLink } from "lucide-react";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Countdown } from "@/components/events/countdown";
 import { ShareButtons } from "@/components/events/share-buttons";
 import { getEventBySlug, getSlugByShortCode } from "@/lib/events/queries";
+import { recordEventView } from "@/lib/events/analytics";
 import { getEventDisplayStatus } from "@/lib/events/display-status";
 import { buildEventMetadata, buildEventStructuredData } from "@/lib/seo/metadata";
 import { formatDate, formatTime, formatCurrency } from "@/lib/format";
@@ -53,6 +55,9 @@ export default async function EventDetailPage({ params }: PageProps) {
     if (canonicalSlug) permanentRedirect(`/${canonicalSlug}`);
     notFound();
   }
+
+  // Count this detail view (runs after the response is sent).
+  after(() => recordEventView(event.id));
 
   const now = new Date();
   const displayStatus = getEventDisplayStatus(

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getEventBySlug } from "@/lib/events/queries";
+import { recordEventView } from "@/lib/events/analytics";
 import { auth } from "@/lib/auth";
 
 /**
@@ -20,6 +21,9 @@ export async function GET(
 
   const session = await auth().catch(() => null);
   const now = new Date();
+
+  // Count this (modal) detail view after the response is sent.
+  after(() => recordEventView(event.id));
 
   const tickets = event.eventTickets
     .filter((t) => {

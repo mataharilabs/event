@@ -316,6 +316,18 @@ export function PaymentSettingsForm({ settings }: Props) {
             placeholder={secretPlaceholder(settings.hasWhatsappApiKey)}
           />
         </Field>
+        {whatsappApiUrl.trim() && (
+          <div className="pt-1">
+            <Button asChild type="button" variant="outline" size="sm">
+              <a href={`${whatsappApiUrl.replace(/\/$/, "")}/qr`} target="_blank" rel="noopener noreferrer">
+                <QrCode className="h-4 w-4 mr-1.5" /> Scan QR untuk Hubungkan WhatsApp
+              </a>
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">
+              Membuka halaman QR gateway. Scan dari aplikasi WhatsApp untuk menyambungkan nomor.
+            </p>
+          </div>
+        )}
       </Section>
 
       {/* Save */}

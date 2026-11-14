@@ -1,12 +1,31 @@
 "use server";
 
 import { db } from "@/db";
-import { registrations, payments, auditLogs } from "@/db/schema";
+import { registrations, payments, auditLogs, registrationAnswers, notifications } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/admin";
 import { revalidatePath } from "next/cache";
 import { createId } from "@/lib/id";
 import type { RegistrationStatus } from "@/types";
+
+export async function deleteRegistration(registrationId: string) {
+  const admin = await requireAdmin();
+
+  const reg = await db.query.registrations.findFirst({ where: eq(registrations.id, registrationId) });
+  if (!reg) return { success: false, error: "Registrasi tidak ditemukan." };
+
+  // Remove child rows first (no ON DELETE CASCADE on these FKs), atomically.
+  await db.batch([
+    db.delete(payments).where(eq(payments.registrationId, registrationId)),
+    db.delete(registrationAnswers).where(eq(registrationAnswers.registrationId, registrationId)),
+    db.delete(notifications).where(eq(notifications.registrationId, registrationId)),
+    db.delete(registrations).where(eq(registrations.id, registrationId)),
+  ]);
+
+  console.warn(`[participants] registration ${registrationId} deleted by admin ${admin.id}`);
+  revalidatePath("/admin/participants");
+  return { success: true };
+}
 
 export async function changeRegistrationStatus(registrationId: string, newStatus: RegistrationStatus) {
   const admin = await requireAdmin();

@@ -1,12 +1,14 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getAdminEvents } from "@/lib/admin/queries";
 import { getEventDisplayStatus } from "@/lib/events/display-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminEventsFilter } from "./events-filter";
+import { DeleteEventButton } from "@/components/admin/admin-actions";
 import { formatDate } from "@/lib/format";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, Eye, ImageIcon } from "lucide-react";
 import type { Metadata } from "next";
 import type { EventLifecycleStatus } from "@/types";
 
@@ -82,6 +84,7 @@ export default async function AdminEventsPage({ searchParams }: PageProps) {
                 <TableHead>Tanggal</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Mode</TableHead>
+                <TableHead className="text-right">Dilihat</TableHead>
                 <TableHead className="text-right">Peserta</TableHead>
                 <TableHead />
               </TableRow>
@@ -97,9 +100,18 @@ export default async function AdminEventsPage({ searchParams }: PageProps) {
                 return (
                   <TableRow key={event.id}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium leading-snug max-w-[220px] truncate">{event.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{event.slug}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-10 w-14 shrink-0 rounded-md overflow-hidden bg-muted flex items-center justify-center">
+                          {event.primaryImageUrl ? (
+                            <Image src={event.primaryImageUrl} alt="" fill className="object-cover" sizes="56px" />
+                          ) : (
+                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium leading-snug max-w-[200px] truncate">{event.title}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-[200px]">{event.slug}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -116,6 +128,11 @@ export default async function AdminEventsPage({ searchParams }: PageProps) {
                     <TableCell className="capitalize text-sm text-muted-foreground">
                       {event.attendanceMode}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                        <Eye className="h-3.5 w-3.5" /> {event.viewCount}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-right">{event.registrationCount}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 justify-end">
@@ -129,6 +146,7 @@ export default async function AdminEventsPage({ searchParams }: PageProps) {
                         <Button asChild variant="ghost" size="sm">
                           <Link href={`/admin/events/${event.id}`}>Kelola</Link>
                         </Button>
+                        <DeleteEventButton eventId={event.id} registrationCount={Number(event.registrationCount)} />
                       </div>
                     </TableCell>
                   </TableRow>

@@ -65,12 +65,14 @@ export async function getAdminEvents(filter?: {
       title: events.title,
       slug: events.slug,
       shortCode: events.shortCode,
+      primaryImageUrl: events.primaryImageUrl,
       lifecycleStatus: events.lifecycleStatus,
       startDatetime: events.startDatetime,
       endDatetime: events.endDatetime,
       attendanceMode: events.attendanceMode,
       createdAt: events.createdAt,
       registrationCount: count(registrations.id),
+      viewCount: sql<number>`(select coalesce(count(*), 0)::int from event_analytics where event_id = ${events.id} and event_type = 'page_view')`,
     })
       .from(events)
       .leftJoin(registrations, and(

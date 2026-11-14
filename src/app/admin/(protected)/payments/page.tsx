@@ -3,6 +3,7 @@ import { payments, registrations, events } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ConfirmPaymentButton } from "@/components/admin/admin-actions";
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { Metadata } from "next";
 
@@ -21,6 +22,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "succes
 
 const methodLabel: Record<string, string> = {
   xendit: "Xendit",
+  midtrans: "Midtrans",
   manual: "Transfer Manual",
   qris: "QRIS",
 };
@@ -35,6 +37,7 @@ export default async function PaymentsPage() {
       provider: payments.provider,
       paidAt: payments.paidAt,
       createdAt: payments.createdAt,
+      registrationId: payments.registrationId,
       registrationCode: registrations.registrationCode,
       participantName: registrations.name,
       eventTitle: events.title,
@@ -67,11 +70,14 @@ export default async function PaymentsPage() {
                 <TableHead>Jumlah</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Tanggal</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
                 const sc = statusConfig[row.status] ?? statusConfig.pending;
+                const isManual = row.provider === "manual" || row.provider === "qris";
+                const canConfirm = row.status === "pending" && isManual && row.registrationId;
                 return (
                   <TableRow key={row.id}>
                     <TableCell>
@@ -90,6 +96,11 @@ export default async function PaymentsPage() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {row.paidAt ? formatDate(row.paidAt) : formatDate(row.createdAt)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {canConfirm && row.registrationId && (
+                        <ConfirmPaymentButton registrationId={row.registrationId} />
+                      )}
                     </TableCell>
                   </TableRow>
                 );

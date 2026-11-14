@@ -77,6 +77,14 @@ export async function POST(request: Request) {
       })
       .returning();
 
+    // First image uploaded → make it the primary automatically.
+    if (!event.primaryImageUrl) {
+      await db
+        .update(events)
+        .set({ primaryImageUrl: blob.url, updatedAt: new Date() })
+        .where(eq(events.id, eventId));
+    }
+
     return NextResponse.json({ id: img?.id, url: blob.url });
   } catch (err) {
     console.error("[event-images] upload failed:", err);

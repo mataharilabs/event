@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ParticipantsFilter } from "./participants-filter";
+import { DeleteParticipantButton } from "@/components/admin/admin-actions";
 import { formatCurrency } from "@/lib/format";
 import { Download } from "lucide-react";
 import type { Metadata } from "next";
@@ -114,9 +115,12 @@ export default async function AdminParticipantsPage({ searchParams }: PageProps)
                       <Badge variant={ps.variant}>{ps.label}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/admin/participants/${reg.id}`}>Detail</Link>
-                      </Button>
+                      <div className="flex items-center gap-1 justify-end">
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/admin/participants/${reg.id}`}>Detail</Link>
+                        </Button>
+                        <DeleteParticipantButton registrationId={reg.id} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 );

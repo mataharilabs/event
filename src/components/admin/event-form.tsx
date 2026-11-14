@@ -25,6 +25,7 @@ const formSchema = z.object({
   googleMapsUrl: z.string().optional(),
   onlinePlatform: z.enum(["google_meet", "zoom", "microsoft_teams", "other"]).optional(),
   meetingUrl: z.string().optional(),
+  organizerId: z.string().optional(),
 }).refine((data) => new Date(data.endDatetime) > new Date(data.startDatetime), {
   message: "Waktu selesai harus setelah waktu mulai",
   path: ["endDatetime"],
@@ -46,11 +47,12 @@ function toLocalDatetimeString(date: Date): string {
 
 interface EventFormProps {
   event?: Event;
+  organizers?: { id: string; name: string }[];
 }
 
 const emptyTicket = (): TicketDraft => ({ name: "", price: 0, quota: null, description: "" });
 
-export function EventForm({ event }: EventFormProps) {
+export function EventForm({ event, organizers = [] }: EventFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -75,10 +77,12 @@ export function EventForm({ event }: EventFormProps) {
           googleMapsUrl: event.googleMapsUrl ?? "",
           onlinePlatform: event.onlinePlatform ?? undefined,
           meetingUrl: event.meetingUrl ?? "",
+          organizerId: event.organizerId ?? "",
         }
       : {
           timezone: "Asia/Jakarta",
           attendanceMode: "offline",
+          organizerId: "",
         },
   });
 
@@ -116,6 +120,7 @@ export function EventForm({ event }: EventFormProps) {
         googleMapsUrl: data.googleMapsUrl || undefined,
         meetingUrl: data.meetingUrl || undefined,
         onlinePlatform: data.onlinePlatform || undefined,
+        organizerId: data.organizerId || null,
       };
 
       if (event) {
@@ -158,6 +163,27 @@ export function EventForm({ event }: EventFormProps) {
         <div className="space-y-1.5">
           <Label htmlFor="description">Deskripsi</Label>
           <Textarea id="description" {...register("description")} rows={5} placeholder="Deskripsi event..." />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label>Penyelenggara</Label>
+          <Select
+            value={watch("organizerId") || "none"}
+            onValueChange={(v) => setValue("organizerId", v === "none" ? "" : v)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Tanpa penyelenggara" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">— Tanpa penyelenggara —</SelectItem>
+              {organizers.map((o) => (
+                <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Kelola daftar di menu <strong>Penyelenggara</strong>.
+          </p>
         </div>
       </section>
 

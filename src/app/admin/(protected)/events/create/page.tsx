@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ImagePlus } from "lucide-react";
 import { EventForm } from "@/components/admin/event-form";
+import { getOrganizersForSelect } from "@/lib/admin/organizer-actions";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function CreateEventPage() {
+export default async function CreateEventPage() {
+  const organizers = await getOrganizersForSelect().catch(() => []);
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
@@ -23,7 +25,7 @@ export default function CreateEventPage() {
       </div>
 
       <div className="bg-white rounded-xl border p-6">
-        <EventForm />
+        <EventForm organizers={organizers} />
       </div>
 
       <div className="flex items-start gap-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">

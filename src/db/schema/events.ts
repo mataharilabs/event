@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createId } from "@/lib/id";
 import { adminUsers } from "./admin-users";
+import { organizers } from "./organizers";
 
 export const lifecycleStatusEnum = pgEnum("lifecycle_status", [
   "draft",
@@ -58,6 +59,8 @@ export const events = pgTable(
     meetingUrlHidden: text("meeting_url_hidden").default("false"),
 
     lifecycleStatus: lifecycleStatusEnum("lifecycle_status").notNull().default("draft"),
+
+    organizerId: text("organizer_id").references(() => organizers.id, { onDelete: "set null" }),
 
     theme: text("theme").default("clean"),
     themeConfig: jsonb("theme_config"),

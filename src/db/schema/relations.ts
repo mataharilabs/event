@@ -12,6 +12,7 @@ import { eventAnalytics } from "./event-analytics";
 import { users } from "./users";
 import { adminUsers } from "./admin-users";
 import { auditLogs } from "./audit-logs";
+import { organizers } from "./organizers";
 
 export const eventsRelations = relations(events, ({ many, one }) => ({
   eventImages: many(eventImages),
@@ -20,10 +21,18 @@ export const eventsRelations = relations(events, ({ many, one }) => ({
   registrations: many(registrations),
   shortLinks: many(shortLinks),
   eventAnalytics: many(eventAnalytics),
+  organizer: one(organizers, {
+    fields: [events.organizerId],
+    references: [organizers.id],
+  }),
   createdByAdmin: one(adminUsers, {
     fields: [events.createdBy],
     references: [adminUsers.id],
   }),
+}));
+
+export const organizersRelations = relations(organizers, ({ many }) => ({
+  events: many(events),
 }));
 
 export const eventImagesRelations = relations(eventImages, ({ one }) => ({

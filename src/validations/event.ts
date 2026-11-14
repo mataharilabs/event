@@ -14,6 +14,7 @@ const eventBaseSchema = z.object({
   googleMapsUrl: z.string().url().optional().or(z.literal("")),
   onlinePlatform: z.enum(["google_meet", "zoom", "microsoft_teams", "other"]).optional(),
   meetingUrl: z.string().url().optional().or(z.literal("")),
+  organizerId: z.string().optional().nullable(),
   seoTitle: z.string().max(70).optional(),
   seoDescription: z.string().max(160).optional(),
 });

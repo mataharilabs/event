@@ -9,6 +9,7 @@ import {
   CreditCard,
   ScrollText,
   Settings,
+  Building2,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/events", label: "Events", icon: CalendarDays },
+  { href: "/admin/organizers", label: "Penyelenggara", icon: Building2 },
   { href: "/admin/participants", label: "Participants", icon: Users },
   { href: "/admin/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/audit-logs", label: "Audit Log", icon: ScrollText },

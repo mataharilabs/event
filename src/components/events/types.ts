@@ -12,6 +12,7 @@ export interface EventCardProps {
     lifecycleStatus: EventLifecycleStatus;
     attendanceMode: string;
     venueName: string | null;
+    organizerName: string | null;
     minPrice: number;
     maxPrice: number;
     totalQuota: number | null;

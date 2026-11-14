@@ -8,6 +8,7 @@ import { TicketBuilder } from "@/components/admin/ticket-builder";
 import { EventActionButtons } from "@/components/admin/event-actions";
 import { ImageManager } from "@/components/admin/image-manager";
 import { RegistrationFieldsBuilder } from "@/components/admin/registration-fields-builder";
+import { getOrganizersForSelect } from "@/lib/admin/organizer-actions";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, formatTime } from "@/lib/format";
 import type { Metadata } from "next";
@@ -37,7 +38,10 @@ interface PageProps {
 
 export default async function AdminEventDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const event = await getAdminEventDetail(id).catch(() => null);
+  const [event, organizers] = await Promise.all([
+    getAdminEventDetail(id).catch(() => null),
+    getOrganizersForSelect().catch(() => []),
+  ]);
 
   if (!event) notFound();
 
@@ -116,7 +120,7 @@ export default async function AdminEventDetailPage({ params }: PageProps) {
       {/* Edit form */}
       <div className="bg-white rounded-xl border p-6">
         <h2 className="font-semibold mb-6">Detail Event</h2>
-        <EventForm event={event} />
+        <EventForm event={event} organizers={organizers} />
       </div>
 
       {/* Meta info */}

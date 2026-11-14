@@ -54,6 +54,8 @@ export function buildEventStructuredData(event: {
   slug: string;
   price?: number | null;
   currency?: string;
+  organizerName?: string | null;
+  organizerUrl?: string | null;
 }) {
   const url = `${APP_URL}/${event.slug}`;
 
@@ -83,8 +85,8 @@ export function buildEventStructuredData(event: {
     location,
     organizer: {
       "@type": "Organization",
-      name: "AsiaCommerce",
-      url: "https://asiacommerce.net",
+      name: event.organizerName ?? "AsiaCommerce",
+      url: event.organizerUrl ?? "https://asiacommerce.net",
     },
     url,
     ...(event.primaryImageUrl && { image: event.primaryImageUrl }),

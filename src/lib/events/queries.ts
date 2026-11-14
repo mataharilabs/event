@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { events, eventTickets, registrations, shortLinks } from "@/db/schema";
+import { events, eventTickets, registrations, shortLinks, organizers } from "@/db/schema";
 import { eq, and, sql, count, min, max, sum } from "drizzle-orm";
 import { getEventDisplayStatus } from "./display-status";
 import type { EventCardProps } from "@/components/events/types";
@@ -17,14 +17,16 @@ export async function getPublishedEventsForCards(): Promise<EventCardProps["even
       lifecycleStatus: events.lifecycleStatus,
       attendanceMode: events.attendanceMode,
       venueName: events.venueName,
+      organizerName: organizers.name,
       minPrice: min(eventTickets.price),
       maxPrice: max(eventTickets.price),
       totalQuota: sum(eventTickets.quota),
     })
     .from(events)
     .leftJoin(eventTickets, and(eq(eventTickets.eventId, events.id), eq(eventTickets.isActive, true)))
+    .leftJoin(organizers, eq(organizers.id, events.organizerId))
     .where(eq(events.lifecycleStatus, "published"))
-    .groupBy(events.id)
+    .groupBy(events.id, organizers.name)
     .orderBy(events.startDatetime);
 
   const soldCounts = await db
@@ -51,6 +53,7 @@ export async function getPublishedEventsForCards(): Promise<EventCardProps["even
     lifecycleStatus: row.lifecycleStatus,
     attendanceMode: row.attendanceMode,
     venueName: row.venueName,
+    organizerName: row.organizerName ?? null,
     minPrice: Number(row.minPrice ?? 0),
     maxPrice: Number(row.maxPrice ?? 0),
     totalQuota: row.totalQuota !== null ? Number(row.totalQuota) : null,
@@ -65,6 +68,7 @@ export async function getEventBySlug(slug: string) {
       eventImages: { orderBy: (img, ops) => [ops.asc(img.sortOrder)] },
       eventTickets: { where: (t, ops) => ops.eq(t.isActive, true) },
       registrationFields: { orderBy: (f, ops) => [ops.asc(f.sortOrder)] },
+      organizer: true,
     },
   });
 }

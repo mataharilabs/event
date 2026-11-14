@@ -24,6 +24,9 @@ interface ModalEvent {
   venueAddress: string | null;
   googleMapsUrl: string | null;
   lifecycleStatus: EventLifecycleStatus;
+  organizerName: string | null;
+  organizerLogoUrl: string | null;
+  organizerWebsite: string | null;
 }
 
 interface ModalData {
@@ -214,6 +217,16 @@ function ModalBody({
               </div>
 
               <h1 className="text-xl font-bold leading-snug">{event.title}</h1>
+              {event.organizerName && (
+                <p className="text-sm text-muted-foreground -mt-2">
+                  oleh{" "}
+                  {event.organizerWebsite ? (
+                    <a href={event.organizerWebsite} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:underline">{event.organizerName}</a>
+                  ) : (
+                    <span className="font-medium text-foreground">{event.organizerName}</span>
+                  )}
+                </p>
+              )}
 
               {/* Date / time / venue */}
               <div className="space-y-2 text-sm">

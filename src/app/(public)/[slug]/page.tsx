@@ -81,6 +81,8 @@ export default async function EventDetailPage({ params }: PageProps) {
     ...event,
     price: minPrice,
     currency: activeTickets[0]?.currency,
+    organizerName: event.organizer?.name,
+    organizerUrl: event.organizer?.website,
   });
 
   return (
@@ -127,6 +129,25 @@ export default async function EventDetailPage({ params }: PageProps) {
                 {statusConfig.label}
               </Badge>
               <h1 className="text-3xl font-bold">{event.title}</h1>
+              {event.organizer && (
+                <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                  {event.organizer.logoUrl && (
+                    <span className="relative h-6 w-6 rounded overflow-hidden bg-muted inline-block">
+                      <Image src={event.organizer.logoUrl} alt={event.organizer.name} fill className="object-contain" sizes="24px" />
+                    </span>
+                  )}
+                  <span>
+                    oleh{" "}
+                    {event.organizer.website ? (
+                      <a href={event.organizer.website} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:underline">
+                        {event.organizer.name}
+                      </a>
+                    ) : (
+                      <span className="font-medium text-foreground">{event.organizer.name}</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Info grid */}

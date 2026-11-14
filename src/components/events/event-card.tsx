@@ -19,6 +19,7 @@ interface EventCardProps {
     lifecycleStatus: EventLifecycleStatus;
     attendanceMode: string;
     venueName: string | null;
+    organizerName: string | null;
     minPrice: number;
     maxPrice: number;
     totalQuota: number | null;
@@ -130,9 +131,14 @@ export function EventCard({ event }: EventCardProps) {
           <span>{time}</span>
         </div>
 
-        <h3 className="font-semibold text-base leading-tight line-clamp-2 mb-3 group-hover:text-primary transition-colors">
+        <h3 className="font-semibold text-base leading-tight line-clamp-2 mb-1 group-hover:text-primary transition-colors">
           {event.title}
         </h3>
+
+        {event.organizerName && (
+          <p className="text-xs text-muted-foreground mb-3">oleh {event.organizerName}</p>
+        )}
+        {!event.organizerName && <div className="mb-3" />}
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0">
